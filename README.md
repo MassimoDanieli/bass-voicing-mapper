@@ -1,1 +1,52 @@
 # Bass Voicing Mapper
+
+An interactive 4-string bass fretboard for visualizing chord tones, finding compact voicings, and practising progressions in time.
+
+## Features
+
+- chord parsing with sharps, flats, triads, sevenths, diminished and extended chords
+- optimized voicings inside a selectable fret range
+- timed chord, arpeggio, and walking-bass practice modes
+- built-in metronome and adjustable tempo
+- 20 song and practice progressions
+- English and Italian interface (English by default)
+- responsive layout for desktop and mobile
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+The static production files are generated in `dist/`.
+
+## Deploy to Cloudflare Workers
+
+1. Connect this GitHub repository in Cloudflare Workers & Pages.
+2. Use `npm run build` as the build command.
+3. Use `npx wrangler deploy` as the deploy command.
+4. Add the custom domain `bass-cord.massimodanieli.com` to the Worker.
+
+You can also deploy from a configured terminal with:
+
+```bash
+npm run deploy
+```
+
+## Music notation
+
+The progression parser accepts forms such as:
+
+- `G A D`
+- `C-7 F7 Bbdim7 Ebdim7`
+- `Am7 Dm7 G7 Cmaj7`
+
+Built for standard E–A–D–G four-string bass.
+
