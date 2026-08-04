@@ -63,7 +63,7 @@ export default function App() {
   const [drumLevel,setDrumLevel] = useState(0.9); const [compLevel,setCompLevel] = useState(0.55); const [countIn,setCountIn] = useState(true);
   const [speed,setSpeed] = useState(1); const [offset,setOffset] = useState(0); const [loop,setLoop] = useState(false);
   const [loopStart,setLoopStart] = useState(0); const [loopEnd,setLoopEnd] = useState(Number.MAX_SAFE_INTEGER);
-  const [songTitle,setSongTitle] = useState(""); const [savedSongs,setSavedSongs] = useState<SavedSong[]>([]);
+  const [songTitle,setSongTitle] = useState(""); const [songSubtitle,setSongSubtitle] = useState(""); const [savedSongs,setSavedSongs] = useState<SavedSong[]>([]);
   const [warning,setWarning] = useState("");
   const audioRef = useRef<AudioContext | null>(null);
   const mediaRef = useRef<HTMLAudioElement | null>(null);
@@ -224,7 +224,7 @@ export default function App() {
     try { window.localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
     catch { setWarning(t.storageFull); }
   };
-  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setStyle(preset.feel); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
+  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setStyle(preset.feel); setSongTitle(preset.title); setSongSubtitle(`${preset.artist} · ${preset.style} · ${preset.bpm} BPM`); setPlaying(false); seekStep(0); navigate("/"); };
   const loadAudio = (file?:File) => {
     if (!file) return;
     mediaRef.current?.pause();
@@ -242,13 +242,13 @@ export default function App() {
     persist([{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,title,progression:input,bpm},...savedSongs].slice(0,20));
     setSongTitle(title);
   };
-  const loadSaved = (saved:SavedSong) => { setSongTitle(saved.title);setInput(saved.progression);setBpm(saved.bpm);setPlaying(false);seekStep(0); navigate("/"); };
+  const loadSaved = (saved:SavedSong) => { setSongTitle(saved.title); setSongSubtitle(`${saved.bpm} BPM`);setInput(saved.progression);setBpm(saved.bpm);setPlaying(false);seekStep(0); navigate("/"); };
   const deleteSaved = (id:string) => persist(savedSongs.filter(saved=>saved.id!==id));
 
   return <main lang={lang}>
     <header className="topbar"><div className="brand"><span className="clef">𝄢</span><span>Bass Voicing Mapper</span></div><nav className="nav" aria-label={t.navStudio}>{([["/",t.navStudio],["/repertoire",t.navRepertoire],["/songs",t.navSongs],["/help",t.navHelp]] as ["/"|"/repertoire"|"/songs"|"/help",string][]).map(([to,label])=><Link key={to} to={to} className={route===to?"current":""}>{label}</Link>)}</nav><div className="header-actions"><span className="header-note">{t.header}</span><div className="lang-switch" aria-label="Language"><button className={lang==='en'?'active':''} onClick={()=>setLang('en')}>EN</button><button className={lang==='it'?'active':''} onClick={()=>setLang('it')}>IT</button></div></div></header>
     {route==="/" && <>
-    <section className="intro"><h1>{t.hero1} {t.hero2}</h1><span>{t.intro}</span></section>
+    <section className={"intro"+(songTitle?" loaded":"")}>{songTitle ? <><h1>{songTitle}</h1><span>{songSubtitle}</span></> : <><h1>{t.hero1} {t.hero2}</h1><span>{t.intro}</span></>}</section>
     <section className="workspace">
       <aside className="controls card">
         <div className="panel-tabs" role="tablist">{([["chords",t.panelChords],["backing",t.panelBacking]] as ["chords"|"backing",string][]).map(([value,label])=><button key={value} role="tab" aria-selected={panel===value} className={panel===value?"chosen":""} onClick={()=>setPanel(value)}>{label}</button>)}</div>
