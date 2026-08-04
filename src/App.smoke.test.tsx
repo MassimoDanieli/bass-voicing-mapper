@@ -63,6 +63,19 @@ describe("routes", () => {
     expect(screen.getByLabelText<HTMLTextAreaElement>("Progression").value)
       .toBe("Cm7 Fm7 Dm7b5 G7 Cm7");
   });
+
+  it("names the loaded song where you can see it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).not.toContain("Blue Bossa");
+
+    await user.click(nav().getByText("Repertoire"));
+    await user.click(screen.getByText("Blue Bossa"));
+
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.textContent).toBe("Blue Bossa");
+    expect(screen.getByText(/Kenny Dorham/)).toBeDefined();
+  });
 });
 
 describe("control panel", () => {
