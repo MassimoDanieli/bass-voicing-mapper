@@ -20,7 +20,7 @@ import {
   timeOfBeat,
 } from "./transport";
 
-import { COPY, PRESETS, type Lang, type Preset } from "./content";
+import { COPY, PRESETS, songNameFromFile, type Lang, type Preset } from "./content";
 import { BACKING_STYLES, backingEvents, type BackingStyle } from "./backing";
 import { BackingPlayer } from "./backingPlayer";
 import { Link, navigate, useRoute } from "./router";
@@ -229,7 +229,7 @@ export default function App() {
     if (!file) return;
     mediaRef.current?.pause();
     setAudioUrl(current=>{ if(current) URL.revokeObjectURL(current); return URL.createObjectURL(file); });
-    setAudioName(file.name); setSource("file"); setPlaying(false);
+    setAudioName(file.name); setSource("file"); setSongTitle(songNameFromFile(file.name)); setSongSubtitle(""); setPlaying(false);
   };
   const chooseSource = (next:"metronome"|"generated"|"file") => {
     setPlaying(false);
@@ -258,7 +258,7 @@ export default function App() {
         </div>
         {panel==="chords" ? <>
         <label htmlFor="progression">{t.progression}</label>
-        <textarea id="progression" value={input} onChange={e=>{setInput(e.target.value);setActive(0);setBeat(0);setPlaying(false)}} rows={3}/>
+        <textarea id="progression" value={input} onChange={e=>{setInput(e.target.value);setSongSubtitle("");setActive(0);setBeat(0);setPlaying(false)}} rows={3}/>
         {song.invalid.length>0 ? <small className="parse-error">{t.invalid}: {song.invalid.join(' ')}</small> : <small>{t.hint}</small>}
         <hr/>
         <label>{t.zone}</label>
