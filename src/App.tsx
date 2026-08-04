@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-
-const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
-const OPEN = [7, 2, 9, 4]; // G D A E, visually top to bottom
-const STRINGS = ["G", "D", "A", "E"];
-const COLORS = ["root", "third", "fifth", "seventh", "extension"];
-const FORMULAS: Record<string, number[]> = {
-  "": [0, 4, 7], maj: [0, 4, 7], m: [0, 3, 7], "-": [0, 3, 7],
-  7: [0, 4, 7, 10], maj7: [0, 4, 7, 11], M7: [0, 4, 7, 11],
-  m7: [0, 3, 7, 10], "-7": [0, 3, 7, 10], dim: [0, 3, 6],
-  dim7: [0, 3, 6, 9], "°7": [0, 3, 6, 9], m7b5: [0, 3, 6, 10], "ø7": [0, 3, 6, 10],
-  6: [0, 4, 7, 9], m6: [0, 3, 7, 9], sus2: [0, 2, 7], sus4: [0, 5, 7],
-  add9: [0, 4, 7, 2], 9: [0, 4, 7, 10, 2], m9: [0, 3, 7, 10, 2], maj9: [0, 4, 7, 11, 2],
-};
-const ROOTS: Record<string, number> = { C:0,"B#":0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,Fb:4,"E#":5,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11,Cb:11 };
-
-type Chord = { raw: string; root: number; tones: number[]; intervals: number[] };
-type Position = { string: number; fret: number; tone: number; degree: number };
+import {
+  OPEN_PITCH_CLASSES,
+  STRING_NAMES,
+  noteName,
+  omittedTones,
+  optimize,
+  parseProgression,
+  type DegreeRole,
+} from "./music";
 type PracticeMode = "chords" | "arpeggio" | "walking";
 type Preset = { title:string; artist:string; style:string; progression:string; bpm:number };
 type Lang = "en" | "it";
@@ -44,60 +36,13 @@ const PRESETS: Preset[] = [
 ];
 
 const COPY = {
-  en:{header:"4-string bass · E–A–D–G",eyebrow:"CHORD MAP",hero1:"Find the right voicing,",hero2:"without leaving your zone.",intro:"See every chord tone and find the smoothest path across the fretboard.",sketch1:"voicing",sketch2:"minimum movement",sketch3:"full sound",progression:"Progression",hint:"Separate chords with spaces. Example: G A D",zone:"Fretboard zone",frets:"frets",show:"Show positions",optimized:"Optimized voicings",all:"Show all notes",practice:"Timed practice",running:"● PLAYING",ready:"READY",chords:"Chords",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Duration",beat:"beat",beats:"beats",pause:"Pause",play:"Play",restart:"Back to start",metro:"Toggle metronome",how:"How does it work?",howText:"The suggested path minimizes hand movement between chords.",recommended:"Recommended voicing",root:"Root",third:"Third",fifth:"Fifth",seventh:"Seventh",smooth:"Smooth path",smoothText:"Voicings chosen for minimum movement.",none:"No chord recognized",try:"Try: G A D or C-7 F7 Bbdim7 Ebdim7",repertoire:"REPERTOIRE",libraryTitle:"Progressions ready to play",libraryText:"Essential harmonic forms and simplified song progressions for bass practice.",exercises:"exercises",load:"Load →",footer:"Supports international notation with sharps and flats · Optimized for 4-string bass"},
-  it:{header:"Basso 4 corde · E–A–D–G",eyebrow:"MAPPA DEGLI ACCORDI",hero1:"Trova la voce giusta,",hero2:"senza cambiare zona.",intro:"Visualizza le note degli accordi e trova il percorso più fluido sulla tastiera.",sketch1:"voicing",sketch2:"movimento minimo",sketch3:"suono pieno",progression:"Progressione",hint:"Separa gli accordi con uno spazio. Esempio: G A D",zone:"Zona della tastiera",frets:"tasti",show:"Mostra le posizioni",optimized:"Rivolti ottimizzati",all:"Mostra tutte le note",practice:"Pratica a tempo",running:"● IN CORSO",ready:"PRONTO",chords:"Accordi",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Durata",beat:"battito",beats:"battiti",pause:"Pausa",play:"Avvia",restart:"Torna all’inizio",metro:"Attiva o disattiva metronomo",how:"Come funziona?",howText:"Il percorso suggerito riduce lo spostamento medio della mano tra gli accordi.",recommended:"Voicing consigliato",root:"Fondamentale",third:"Terza",fifth:"Quinta",seventh:"Settima",smooth:"Percorso fluido",smoothText:"Voicing scelti per spostamenti minimi.",none:"Nessun accordo riconosciuto",try:"Prova: G A D oppure C-7 F7 Bbdim7 Ebdim7",repertoire:"REPERTORIO",libraryTitle:"Progressioni da suonare subito",libraryText:"Forme armoniche essenziali e versioni semplificate per lo studio del basso.",exercises:"esercizi",load:"Carica →",footer:"Supporta notazione internazionale con diesis e bemolle · Ottimizzato per basso a 4 corde"}
+  en:{header:"4-string bass · E–A–D–G",eyebrow:"CHORD MAP",hero1:"Find the right voicing,",hero2:"without leaving your zone.",intro:"See every chord tone and find the smoothest path across the fretboard.",sketch1:"voicing",sketch2:"minimum movement",sketch3:"full sound",progression:"Progression",hint:"Separate chords with spaces. Example: G A D",invalid:"Not recognized",omitted:"omits",zone:"Fretboard zone",frets:"frets",show:"Show positions",optimized:"Optimized voicings",all:"Show all notes",practice:"Timed practice",running:"● PLAYING",ready:"READY",chords:"Chords",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Duration",beat:"beat",beats:"beats",pause:"Pause",play:"Play",restart:"Back to start",metro:"Toggle metronome",how:"How does it work?",howText:"The suggested path protects characteristic chord tones, then reduces hand and voice movement.",recommended:"Recommended voicing",root:"Root",third:"Third",fifth:"Fifth",seventh:"Seventh",extension:"Extension",smooth:"Smooth path",smoothText:"Harmonic priorities first, movement second.",none:"No chord recognized",try:"Try: G A D or C-7 F7 Bbdim7 Ebdim7",repertoire:"REPERTOIRE",libraryTitle:"Progressions ready to play",libraryText:"Essential harmonic forms and simplified song progressions for bass practice.",exercises:"exercises",load:"Load →",footer:"Supports international notation with sharps and flats · Optimized for 4-string bass"},
+  it:{header:"Basso 4 corde · E–A–D–G",eyebrow:"MAPPA DEGLI ACCORDI",hero1:"Trova la voce giusta,",hero2:"senza cambiare zona.",intro:"Visualizza le note degli accordi e trova il percorso più fluido sulla tastiera.",sketch1:"voicing",sketch2:"movimento minimo",sketch3:"suono pieno",progression:"Progressione",hint:"Separa gli accordi con uno spazio. Esempio: G A D",invalid:"Non riconosciuti",omitted:"omette",zone:"Zona della tastiera",frets:"tasti",show:"Mostra le posizioni",optimized:"Rivolti ottimizzati",all:"Mostra tutte le note",practice:"Pratica a tempo",running:"● IN CORSO",ready:"PRONTO",chords:"Accordi",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Durata",beat:"battito",beats:"battiti",pause:"Pausa",play:"Avvia",restart:"Torna all’inizio",metro:"Attiva o disattiva metronomo",how:"Come funziona?",howText:"Il percorso protegge le note caratteristiche, poi riduce il movimento delle voci e della mano.",recommended:"Voicing consigliato",root:"Fondamentale",third:"Terza",fifth:"Quinta",seventh:"Settima",extension:"Estensione",smooth:"Percorso fluido",smoothText:"Prima le priorità armoniche, poi il movimento.",none:"Nessun accordo riconosciuto",try:"Prova: G A D oppure C-7 F7 Bbdim7 Ebdim7",repertoire:"REPERTORIO",libraryTitle:"Progressioni da suonare subito",libraryText:"Forme armoniche essenziali e versioni semplificate per lo studio del basso.",exercises:"esercizi",load:"Carica →",footer:"Supporta notazione internazionale con diesis e bemolle · Ottimizzato per basso a 4 corde"}
 };
 
-function parseChord(raw: string): Chord | null {
-  const clean = raw.trim().replaceAll("♭", "b").replaceAll("♯", "#").replace(/min/i,"m").replace(/Maj/,"maj");
-  const match = clean.match(/^([A-Ga-g])([#b]?)(.*)$/);
-  if (!match) return null;
-  const rootName = match[1].toUpperCase() + match[2];
-  const root = ROOTS[rootName];
-  let quality = match[3].split("/")[0];
-  if (quality === "-") quality = "m";
-  const intervals = FORMULAS[quality] ?? FORMULAS[quality.toLowerCase()] ?? FORMULAS[""];
-  return { raw, root, intervals, tones: intervals.map(i => (root + i) % 12) };
-}
-
-function candidates(chord: Chord, from: number, to: number): Position[][] {
-  const choices = chord.tones.map((tone, degree) => {
-    const found: Position[] = [];
-    OPEN.forEach((open, string) => {
-      for (let fret = from; fret <= to; fret++) if ((open + fret) % 12 === tone) found.push({ string, fret, tone, degree });
-    });
-    return found;
-  }).filter(x => x.length);
-  if (!choices.length) return [];
-  const out: Position[][] = [];
-  const walk = (i:number, used:Set<number>, acc:Position[]) => {
-    if (i === choices.length) { out.push([...acc]); return; }
-    for (const p of choices[i]) if (!used.has(p.string)) {
-      used.add(p.string); acc.push(p); walk(i+1,used,acc); acc.pop(); used.delete(p.string);
-    }
-    walk(i+1,used,acc); // allow omitted tone on narrow ranges
-  };
-  walk(0,new Set(),[]);
-  return out.filter(v => v.length >= Math.min(3, choices.length)).sort((a,b) => spread(a)-spread(b)).slice(0,80);
-}
-function spread(v:Position[]) { const fs=v.map(p=>p.fret); return Math.max(...fs)-Math.min(...fs); }
-function center(v:Position[]) { return v.reduce((s,p)=>s+p.fret,0)/v.length; }
-
-function optimize(chords:Chord[], from:number, to:number) {
-  const sets = chords.map(c => candidates(c,from,to));
-  if (sets.some(s=>!s.length)) return [];
-  let states = sets[0].map(v => ({ path:[v], cost:spread(v)*.35 }));
-  for (let i=1;i<sets.length;i++) {
-    states = sets[i].map(v => {
-      let best = states[0]; let bestCost = Infinity;
-      for (const prev of states) {
-        const c = prev.cost + Math.abs(center(prev.path.at(-1)!)-center(v)) + spread(v)*.35;
-        if (c < bestCost) { bestCost=c; best=prev; }
-      }
-      return { path:[...best.path,v], cost:bestCost };
-    });
-  }
-  return states.sort((a,b)=>a.cost-b.cost)[0]?.path ?? [];
+function colorForRole(role: DegreeRole) {
+  if (role === "bass") return "root";
+  return role === "sixth" || role === "suspension" ? "extension" : role;
 }
 
 export default function App() {
@@ -110,16 +55,17 @@ export default function App() {
   const [mode,setMode] = useState<PracticeMode>("chords"); const [playing,setPlaying] = useState(false);
   const [beat,setBeat] = useState(0); const [noteStep,setNoteStep] = useState(0); const [metro,setMetro] = useState(true);
   const audioRef = useRef<AudioContext | null>(null);
-  const parsed = useMemo(() => input.split(/[\s,;]+/).filter(Boolean).map(parseChord).filter((x):x is Chord=>!!x),[input]);
+  const progression = useMemo(() => parseProgression(input), [input]);
+  const parsed = progression.chords;
   const path = useMemo(() => optimize(parsed,from,to),[parsed,from,to]);
   const chord = parsed[Math.min(active, Math.max(0,parsed.length-1))];
   const fullSelected = useMemo(() => optimized ? path[Math.min(active,path.length-1)] ?? [] : [],[optimized,path,active]);
-  const orderedSelected = useMemo(() => [...fullSelected].sort((a,b)=>a.degree-b.degree || b.string-a.string),[fullSelected]);
+  const orderedSelected = useMemo(() => [...fullSelected].sort((a,b)=>a.toneIndex-b.toneIndex || b.string-a.string),[fullSelected]);
   const walkingOrder = useMemo(() => {
     if (!orderedSelected.length) return [];
-    const root=orderedSelected.find(p=>p.degree===0)??orderedSelected[0];
-    const fifth=orderedSelected.find(p=>p.degree===2)??orderedSelected.at(-1)!;
-    const third=orderedSelected.find(p=>p.degree===1)??root;
+    const root=orderedSelected.find(p=>p.role==="root")??orderedSelected[0];
+    const fifth=orderedSelected.find(p=>p.role==="fifth")??orderedSelected.at(-1)!;
+    const third=orderedSelected.find(p=>p.role==="third")??root;
     return [root,third,fifth,third];
   },[orderedSelected]);
   const playedPositions = mode==="walking" ? walkingOrder : orderedSelected;
@@ -135,7 +81,15 @@ export default function App() {
     osc.frequency.value=accent?1000:720; gain.gain.setValueAtTime(.055,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.055);
     osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime+.06);
   };
-  const togglePlay = () => { if (parsed.length) setPlaying(v=>!v); };
+  const togglePlay = async () => {
+    if (!parsed.length) return;
+    if (!playing && metro) {
+      const Ctx = window.AudioContext || (window as typeof window & {webkitAudioContext:typeof AudioContext}).webkitAudioContext;
+      audioRef.current ??= new Ctx();
+      await audioRef.current.resume();
+    }
+    setPlaying(v=>!v);
+  };
   const resetPractice = () => { setPlaying(false); setActive(0); setBeat(0); setNoteStep(0); };
   useEffect(()=>{
     if (!playing || !parsed.length) return;
@@ -162,6 +116,7 @@ export default function App() {
         <label htmlFor="progression">{t.progression}</label>
         <textarea id="progression" value={input} onChange={e=>{setInput(e.target.value);setActive(0)}} rows={3}/>
         <small>{t.hint}</small>
+        {progression.invalid.length > 0 && <small className="parse-error" role="alert">{t.invalid}: {progression.invalid.join(", ")}</small>}
         <hr/>
         <label>{t.zone}</label>
         <div className="range"><input aria-label="First fret" type="number" min="0" max="20" value={from} onChange={e=>setFrom(Math.min(+e.target.value,to))}/><span>—</span><input aria-label="Last fret" type="number" min="0" max="24" value={to} onChange={e=>setTo(Math.max(+e.target.value,from))}/><span>{t.frets}</span></div>
@@ -175,14 +130,14 @@ export default function App() {
         <div className="tip"><b>{t.how}</b><span>{t.howText}</span></div>
       </aside>
       <div className="viewer card">
-        <div className="viewer-title"><div><h2>{t.recommended}</h2><span className="pill">{t.frets} {from}–{to}</span></div><div className="legend"><span className="root">● {t.root}</span><span className="third">● {t.third}</span><span className="fifth">● {t.fifth}</span><span className="seventh">● {t.seventh}</span></div></div>
+        <div className="viewer-title"><div><h2>{t.recommended}</h2><span className="pill">{t.frets} {from}–{to}</span></div><div className="legend"><span className="root">● {t.root}</span><span className="third">● {t.third}</span><span className="fifth">● {t.fifth}</span><span className="seventh">● {t.seventh}</span><span className="extension">● {t.extension}</span></div></div>
         {parsed.length ? <>
           <div className="tabs" role="tablist">{parsed.map((c,i)=><button role="tab" aria-selected={i===active} className={i===active?'active':''} onClick={()=>setActive(i)} key={i}>{c.raw}</button>)}</div>
           <div className="fret-scroll"><div className="fretboard" style={{'--cols':frets.length} as React.CSSProperties}>
             <div className="fret-numbers"><span></span>{frets.map(f=><span key={f}>{f}</span>)}</div>
-            {STRINGS.map((s,si)=><div className="string-row" key={s}><b>{s}</b>{frets.map(f=>{const tone=(OPEN[si]+f)%12; const degree=chord?.tones.indexOf(tone)??-1; const pos=selected.find(p=>p.string===si&&p.fret===f); const visible=degree>=0 && (!optimized || !!pos); const sounding=!!currentPlayed&&currentPlayed.string===si&&currentPlayed.fret===f&&playing; return <div className="fret" key={f}><span className="string"/><span className="wire"/>{visible&&<span className={'note '+COLORS[degree]+(sounding?' sounding':'')} title={`${NAMES[tone]}, ${lang==='it'?'grado':'degree'} ${degree+1}`}>{NAMES[tone]}</span>}</div>})}</div>)}
+            {STRING_NAMES.map((s,si)=><div className="string-row" key={s}><b>{s}</b>{frets.map(f=>{const pitchClass=(OPEN_PITCH_CLASSES[si]+f)%12; const toneIndex=chord?.tones.findIndex(tone=>tone.pitchClass===pitchClass)??-1; const chordTone=toneIndex>=0?chord?.tones[toneIndex]:undefined; const pos=selected.find(p=>p.string===si&&p.fret===f); const visible=!!chordTone && (!optimized || !!pos); const sounding=!!currentPlayed&&currentPlayed.string===si&&currentPlayed.fret===f&&playing; return <div className="fret" key={f}><span className="string"/><span className="wire"/>{visible&&<span className={'note '+colorForRole(chordTone.role)+(sounding?' sounding':'')} title={`${noteName(pitchClass,chord)}, ${lang==='it'?'grado':'degree'} ${chordTone.degree}`}>{noteName(pitchClass,chord)}</span>}</div>})}</div>)}
           </div></div>
-          <div className="path"><div className="path-copy"><b>{t.smooth}</b><span>{t.smoothText}</span></div><div className="path-cards">{parsed.map((c,i)=><button onClick={()=>setActive(i)} className={i===active?'current':''} key={i}><b>{c.raw}</b><span>{(path[i]??[]).sort((a,b)=>b.string-a.string).map(p=>NAMES[p.tone]).join(' · ')||'—'}</span><small>{(path[i]??[]).map(p=>`${STRINGS[p.string]}${p.fret}`).join('  ')}</small></button>)}</div></div>
+          <div className="path"><div className="path-copy"><b>{t.smooth}</b><span>{t.smoothText}</span></div><div className="path-cards">{parsed.map((c,i)=>{const voicing=path[i]??[];const omitted=omittedTones(c,voicing);return <button onClick={()=>setActive(i)} className={i===active?'current':''} key={i}><b>{c.raw}</b><span>{[...voicing].sort((a,b)=>b.string-a.string).map(p=>noteName(p.pitchClass,c)).join(' · ')||'—'}</span><small>{voicing.map(p=>`${STRING_NAMES[p.string]}${p.fret}`).join('  ')}</small>{omitted.length>0&&<small className="omitted">{t.omitted}: {omitted.map(tone=>tone.degree).join(', ')}</small>}</button>})}</div></div>
         </>:<div className="empty"><b>{t.none}</b><span>{t.try}</span></div>}
       </div>
     </section>
@@ -190,4 +145,3 @@ export default function App() {
     <footer>{t.footer}</footer>
   </main>;
 }
-
