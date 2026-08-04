@@ -20,51 +20,26 @@ import {
   timeOfBeat,
 } from "./transport";
 
+import { COPY, PRESETS, type Lang, type Preset } from "./content";
+import { Link, navigate, useRoute } from "./router";
+import Help from "./pages/Help";
+import Repertoire from "./pages/Repertoire";
+import SavedSongs, { type SavedSong } from "./pages/SavedSongs";
+
 function colorForRole(role: DegreeRole) {
   if (role === "bass") return "root";
   return role === "sixth" || role === "suspension" ? "extension" : role;
 }
 
 type PracticeMode = "chords" | "arpeggio" | "walking";
-type Preset = { title:string; artist:string; style:string; progression:string; bpm:number };
-type Lang = "en" | "it";
-type SavedSong = { id:string; title:string; progression:string; bpm:number };
 
 const STORAGE_KEY = "bvm:songs";
-
-const PRESETS: Preset[] = [
-  { title:"Stand by Me", artist:"Ben E. King", style:"Pop / soul", progression:"C Am F G", bpm:118 },
-  { title:"Let It Be", artist:"The Beatles", style:"Pop", progression:"C G Am F", bpm:72 },
-  { title:"Three Little Birds", artist:"Bob Marley", style:"Reggae", progression:"A D A E", bpm:76 },
-  { title:"So What", artist:"Miles Davis", style:"Modal jazz", progression:"Dm7 Dm7 Ebm7 Dm7", bpm:136 },
-  { title:"Blue Bossa", artist:"Kenny Dorham", style:"Bossa jazz", progression:"Cm7 Fm7 Dm7b5 G7 Cm7", bpm:116 },
-  { title:"Autumn Leaves", artist:"Standard jazz", style:"II–V–I", progression:"Cm7 F7 Bbmaj7 Ebmaj7 Am7b5 D7 Gm", bpm:120 },
-  { title:"Song for My Father", artist:"Horace Silver", style:"Hard bop", progression:"Fm7 Eb7 Db7 C7", bpm:126 },
-  { title:"12-bar Blues", artist:"Traditional form", style:"Blues", progression:"E7 E7 E7 E7 A7 A7 E7 E7 B7 A7 E7 B7", bpm:100 },
-  { title:"Rhythm Changes", artist:"Jazz form", style:"Turnaround", progression:"Bb Gm7 Cm7 F7 Bb Gm7 Cm7 F7", bpm:160 },
-  { title:"Circle of Fifths", artist:"Practice pattern", style:"Technique", progression:"C7 F7 Bb7 Eb7 Ab7 Db7 Gb7 B7 E7 A7 D7 G7", bpm:90 },
-  { title:"Fly Me to the Moon", artist:"Bart Howard", style:"Jazz standard", progression:"Am7 Dm7 G7 Cmaj7 Fmaj7 Bm7b5 E7 Am7", bpm:120 },
-  { title:"Hit the Road Jack", artist:"Ray Charles", style:"Soul", progression:"Am G F E", bpm:86 },
-  { title:"Knockin’ on Heaven’s Door", artist:"Bob Dylan", style:"Folk rock", progression:"G D Am G D C", bpm:70 },
-  { title:"With or Without You", artist:"U2", style:"Rock", progression:"D A Bm G", bpm:110 },
-  { title:"All Along the Watchtower", artist:"Bob Dylan / Hendrix", style:"Rock", progression:"Am G F G", bpm:116 },
-  { title:"Get Lucky", artist:"Daft Punk", style:"Funk / pop", progression:"Bm7 D F#m7 E", bpm:116 },
-  { title:"Isn’t She Lovely", artist:"Stevie Wonder", style:"Soul / pop", progression:"Emaj7 C#m7 F#m7 B7", bpm:118 },
-  { title:"Sunny", artist:"Bobby Hebb", style:"Soul jazz", progression:"Am7 Gm7 C7 Fmaj7 Bm7b5 E7 Am7", bpm:124 },
-  { title:"Hotel California", artist:"Eagles", style:"Rock", progression:"Bm F# A E G D Em F#", bpm:74 },
-  { title:"Minor II–V–I", artist:"Practice pattern", style:"Jazz exercise", progression:"Dm7b5 G7 Cm", bpm:96 },
-];
-
-const COPY = {
-  en:{header:"4-string bass · E–A–D–G",eyebrow:"CHORD MAP",hero1:"Find the right voicing,",hero2:"without leaving your zone.",intro:"See every chord tone and find the smoothest path across the fretboard.",progression:"Progression",hint:"Add beats with :number. Example: Am7:4 D7:4 Gmaj7:8",zone:"Fretboard zone",frets:"frets",show:"Show positions",optimized:"Optimized voicings",all:"Show all notes",panelChords:"Chords",panelBacking:"Backing track",practice:"Song practice",running:"● PLAYING",ready:"READY",chords:"Chords",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Default duration",beat:"beat",beats:"beats",pause:"Pause",play:"Play",restart:"Back to start",metro:"Toggle metronome",how:"How does it work?",howText:"Chord durations, player and fretboard share the same transport.",recommended:"Recommended voicing",root:"Root",third:"Third",fifth:"Fifth",seventh:"Seventh",smooth:"Smooth path",smoothText:"Voicings chosen for minimum movement.",none:"No chord recognized",try:"Try: G:4 A:4 D:8 or C-7 F7 Bbdim7 Ebdim7",invalid:"Not recognized",outOfRange:"No voicing in this fret range",repertoire:"REPERTOIRE",libraryTitle:"Progressions ready to play",libraryText:"Essential harmonic forms and simplified song progressions for bass practice.",exercises:"exercises",load:"Load →",footer:"Supports international notation with sharps and flats · Optimized for 4-string bass",player:"BACKING TRACK",chooseAudio:"Choose an audio file",noSource:"Metronome only",speed:"Speed",offset:"First downbeat (s)",markDownbeat:"Set here",loop:"A–B loop",loopFrom:"From",loopTo:"To",saveSong:"Save song",songName:"Song name",save:"Save",saved:"Saved songs",delete:"Delete",storageFull:"Storage is full: delete a saved song and try again."},
-  it:{header:"Basso 4 corde · E–A–D–G",eyebrow:"MAPPA DEGLI ACCORDI",hero1:"Trova la voce giusta,",hero2:"senza cambiare zona.",intro:"Visualizza le note degli accordi e trova il percorso più fluido sulla tastiera.",progression:"Progressione",hint:"Aggiungi i battiti con :numero. Esempio: Am7:4 D7:4 Gmaj7:8",zone:"Zona della tastiera",frets:"tasti",show:"Mostra le posizioni",optimized:"Rivolti ottimizzati",all:"Mostra tutte le note",panelChords:"Accordi",panelBacking:"Base",practice:"Studio del brano",running:"● IN CORSO",ready:"PRONTO",chords:"Accordi",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Durata predefinita",beat:"battito",beats:"battiti",pause:"Pausa",play:"Avvia",restart:"Torna all’inizio",metro:"Attiva o disattiva metronomo",how:"Come funziona?",howText:"Durate, player e tastiera condividono gli stessi comandi.",recommended:"Voicing consigliato",root:"Fondamentale",third:"Terza",fifth:"Quinta",seventh:"Settima",smooth:"Percorso fluido",smoothText:"Voicing scelti per spostamenti minimi.",none:"Nessun accordo riconosciuto",try:"Prova: G:4 A:4 D:8 oppure C-7 F7 Bbdim7 Ebdim7",invalid:"Non riconosciuti",outOfRange:"Nessun voicing in questa zona",repertoire:"REPERTORIO",libraryTitle:"Progressioni da suonare subito",libraryText:"Forme armoniche essenziali e versioni semplificate per lo studio del basso.",exercises:"esercizi",load:"Carica →",footer:"Supporta notazione internazionale con diesis e bemolle · Ottimizzato per basso a 4 corde",player:"BASE DI ACCOMPAGNAMENTO",chooseAudio:"Scegli un file audio",noSource:"Solo metronomo",speed:"Velocità",offset:"Primo battere (s)",markDownbeat:"Segna qui",loop:"Loop A–B",loopFrom:"Da",loopTo:"A",saveSong:"Salva brano",songName:"Nome del brano",save:"Salva",saved:"Brani salvati",delete:"Elimina",storageFull:"Spazio esaurito: elimina un brano salvato e riprova."}
-};
 
 const clampFret = (value:number) => Number.isFinite(value) ? Math.max(0,Math.min(24,Math.round(value))) : 0;
 
 function readSavedSongs():SavedSong[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(raw) ? raw as SavedSong[] : [];
   } catch { return []; }
 }
@@ -72,6 +47,7 @@ function readSavedSongs():SavedSong[] {
 export default function App() {
   const [lang,setLang] = useState<Lang>("en");
   const [panel,setPanel] = useState<"chords"|"backing">("chords");
+  const route = useRoute();
   const t = COPY[lang];
   const [input,setInput] = useState("C-7:4 F7:4 Bbdim7:2 Ebdim7:6");
   const [from,setFrom] = useState(0); const [to,setTo] = useState(5);
@@ -208,10 +184,10 @@ export default function App() {
 
   const persist = (next:SavedSong[]) => {
     setSavedSongs(next);
-    try { localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
+    try { window.localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
     catch { setWarning(t.storageFull); }
   };
-  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setSongTitle(preset.title); setPlaying(false); seekStep(0); window.scrollTo({top:0,behavior:"smooth"}); };
+  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
   const loadAudio = (file?:File) => {
     if (!file) return;
     mediaRef.current?.pause();
@@ -224,11 +200,12 @@ export default function App() {
     persist([{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,title,progression:input,bpm},...savedSongs].slice(0,20));
     setSongTitle(title);
   };
-  const loadSaved = (saved:SavedSong) => { setSongTitle(saved.title);setInput(saved.progression);setBpm(saved.bpm);setPlaying(false);seekStep(0); };
+  const loadSaved = (saved:SavedSong) => { setSongTitle(saved.title);setInput(saved.progression);setBpm(saved.bpm);setPlaying(false);seekStep(0); navigate("/"); };
   const deleteSaved = (id:string) => persist(savedSongs.filter(saved=>saved.id!==id));
 
   return <main lang={lang}>
-    <header className="topbar"><div className="brand"><span className="clef">𝄢</span><span>Bass Voicing Mapper</span></div><div className="header-actions"><span className="header-note">{t.header}</span><div className="lang-switch" aria-label="Language"><button className={lang==='en'?'active':''} onClick={()=>setLang('en')}>EN</button><button className={lang==='it'?'active':''} onClick={()=>setLang('it')}>IT</button></div></div></header>
+    <header className="topbar"><div className="brand"><span className="clef">𝄢</span><span>Bass Voicing Mapper</span></div><nav className="nav" aria-label={t.navStudio}>{([["/",t.navStudio],["/repertoire",t.navRepertoire],["/songs",t.navSongs],["/help",t.navHelp]] as ["/"|"/repertoire"|"/songs"|"/help",string][]).map(([to,label])=><Link key={to} to={to} className={route===to?"current":""}>{label}</Link>)}</nav><div className="header-actions"><span className="header-note">{t.header}</span><div className="lang-switch" aria-label="Language"><button className={lang==='en'?'active':''} onClick={()=>setLang('en')}>EN</button><button className={lang==='it'?'active':''} onClick={()=>setLang('it')}>IT</button></div></div></header>
+    {route==="/" && <>
     <section className="intro"><h1>{t.hero1} {t.hero2}</h1><span>{t.intro}</span></section>
     <section className="workspace">
       <aside className="controls card">
@@ -253,7 +230,7 @@ export default function App() {
           <div className="source-status"><button className={audioUrl?'':'active'} onClick={clearAudio}>{t.noSource}</button>{audioUrl&&<label>{t.speed}<select value={speed} onChange={e=>setSpeed(+e.target.value)}><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label>}</div>
         </div>
         <div className="loop-panel"><label><input type="checkbox" checked={loop} onChange={e=>setLoop(e.target.checked)}/> {t.loop}</label><select aria-label={t.loopFrom} value={safeLoopStart} onChange={e=>{const value=+e.target.value;setLoopStart(value);if(value>safeLoopEnd)setLoopEnd(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopFrom} {i+1}: {step.chord.raw}</option>)}</select><select aria-label={t.loopTo} value={safeLoopEnd} onChange={e=>{const value=+e.target.value;setLoopEnd(value);if(value<safeLoopStart)setLoopStart(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopTo} {i+1}: {step.chord.raw}</option>)}</select></div>
-        <div className="save-panel"><p>{t.saveSong}</p><div><input aria-label={t.songName} placeholder={t.songName} value={songTitle} onChange={e=>setSongTitle(e.target.value)}/><button onClick={saveSong}>{t.save}</button></div>{warning&&<small className="parse-error" role="alert">{warning}</small>}{savedSongs.length>0&&<ul aria-label={t.saved}>{savedSongs.map(saved=><li key={saved.id}><button onClick={()=>loadSaved(saved)}><b>{saved.title}</b><span>{saved.bpm} BPM</span></button><button aria-label={`${t.delete} ${saved.title}`} onClick={()=>deleteSaved(saved.id)}>×</button></li>)}</ul>}</div>
+        <div className="save-panel"><p>{t.saveSong}</p><div><input aria-label={t.songName} placeholder={t.songName} value={songTitle} onChange={e=>setSongTitle(e.target.value)}/><button onClick={saveSong}>{t.save}</button></div>{warning&&<small className="parse-error" role="alert">{warning}</small>}{savedSongs.length>0&&<Link className="panel-link" to="/songs">{savedSongs.length} {t.saved} · {t.viewSaved}</Link>}</div>
         </>}
         <hr/>
         <div className="practice-heading"><label>{t.practice}</label><span className={playing?'live':''}>{playing?t.running:t.ready}</span></div>
@@ -272,7 +249,10 @@ export default function App() {
         </>:<div className="empty"><b>{t.none}</b><span>{t.try}</span></div>}
       </div>
     </section>
-    <section className="library-section"><div className="library-title"><div><p className="eyebrow">{t.repertoire}</p><h2>{t.libraryTitle}</h2><p>{t.libraryText}</p></div><span>{PRESETS.length} {t.exercises}</span></div><div className="preset-grid">{PRESETS.map(p=><button key={p.title} onClick={()=>loadPreset(p)}><span className="preset-style">{p.style}</span><b>{p.title}</b><span>{p.artist}</span><code>{p.progression}</code><small>{p.bpm} BPM <i>{t.load}</i></small></button>)}</div></section>
+    </>}
+    {route==="/repertoire" && <Repertoire presets={PRESETS} copy={t} onLoad={loadPreset}/>}
+    {route==="/songs" && <SavedSongs songs={savedSongs} copy={t} onLoad={loadSaved} onDelete={deleteSaved}/>}
+    {route==="/help" && <Help lang={lang}/>}
     <footer>{t.footer}</footer>
   </main>;
 }
