@@ -1,6 +1,4 @@
 /**
- * @vitest-environment jsdom
- *
  * These are not unit tests. They mount the real app and check that each route
  * renders and that the controls that must always be reachable, are.
  */
