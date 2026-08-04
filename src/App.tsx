@@ -60,7 +60,7 @@ export default function App() {
   const [audioUrl,setAudioUrl] = useState(""); const [audioName,setAudioName] = useState("");
   const [source,setSource] = useState<"metronome"|"generated"|"file">("metronome");
   const [style,setStyle] = useState<BackingStyle>("swing");
-  const [drumLevel,setDrumLevel] = useState(0.9); const [compLevel,setCompLevel] = useState(0.55);
+  const [drumLevel,setDrumLevel] = useState(0.9); const [compLevel,setCompLevel] = useState(0.55); const [countIn,setCountIn] = useState(true);
   const [speed,setSpeed] = useState(1); const [offset,setOffset] = useState(0); const [loop,setLoop] = useState(false);
   const [loopStart,setLoopStart] = useState(0); const [loopEnd,setLoopEnd] = useState(Number.MAX_SAFE_INTEGER);
   const [songTitle,setSongTitle] = useState(""); const [savedSongs,setSavedSongs] = useState<SavedSong[]>([]);
@@ -197,7 +197,7 @@ export default function App() {
     if (!playing || source!=="generated" || !region.events.length) return;
     const player = playerRef.current ??= new BackingPlayer(audioContext());
     player.setLevels(drumLevel,compLevel);
-    player.start(region.events,bpm,region.beats,Math.max(0,stepStartBeat(grid,cursor.current.active)-region.offset));
+    player.start(region.events,bpm,region.beats,Math.max(0,stepStartBeat(grid,cursor.current.active)-region.offset),countIn?4:0);
     let frame=0;
     const follow=()=>{
       frame=window.requestAnimationFrame(follow);
@@ -214,7 +214,7 @@ export default function App() {
     frame=window.requestAnimationFrame(follow);
     return ()=>{ window.cancelAnimationFrame(frame); player.stop(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[playing,source,region,bpm,grid,mode]);
+  },[playing,source,region,bpm,grid,mode,countIn]);
   useEffect(()=>{ playerRef.current?.setLevels(drumLevel,compLevel); },[drumLevel,compLevel]);
   useEffect(()=>()=>{ playerRef.current?.dispose(); },[]);
   useEffect(()=>()=>{ if(audioUrl) URL.revokeObjectURL(audioUrl); },[audioUrl]);
@@ -224,7 +224,7 @@ export default function App() {
     try { window.localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
     catch { setWarning(t.storageFull); }
   };
-  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
+  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setStyle(preset.feel); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
   const loadAudio = (file?:File) => {
     if (!file) return;
     mediaRef.current?.pause();
@@ -274,7 +274,7 @@ export default function App() {
           {audioUrl&&<audio ref={mediaRef} src={audioUrl} onEnded={()=>setPlaying(false)} preload="metadata" controls/>}
           {audioUrl&&<div className="offset-row"><label>{t.offset}<input type="number" min="0" step="0.05" value={offset} onChange={e=>setOffset(Math.max(0,+e.target.value||0))}/></label><button onClick={markDownbeat}>{t.markDownbeat}</button></div>}
           <div className="mode-switch source-switch">{([["metronome",t.srcMetro],["generated",t.srcGenerated],["file",t.srcFile]] as ["metronome"|"generated"|"file",string][]).map(([value,label])=><button key={value} className={source===value?"chosen":""} disabled={value==="file"&&!audioUrl} onClick={()=>chooseSource(value)}>{label}</button>)}</div>
-          {source==="generated"&&<div className="backing-controls"><small>{t.generatedHint}</small><label>{t.styleLabel}<select value={style} onChange={e=>setStyle(e.target.value as BackingStyle)}>{BACKING_STYLES.map(value=><option key={value} value={value}>{value==="straight"?t.styleStraight:value==="swing"?t.styleSwing:t.styleBossa}</option>)}</select></label><label>{t.drumsLevel}<input type="range" min="0" max="1.4" step="0.05" value={drumLevel} onChange={e=>setDrumLevel(+e.target.value)}/></label><label>{t.pianoLevel}<input type="range" min="0" max="1.4" step="0.05" value={compLevel} onChange={e=>setCompLevel(+e.target.value)}/></label></div>}
+          {source==="generated"&&<div className="backing-controls"><small>{t.generatedHint}</small><label>{t.styleLabel}<select value={style} onChange={e=>setStyle(e.target.value as BackingStyle)}>{BACKING_STYLES.map(value=><option key={value} value={value}>{value==="straight"?t.styleStraight:value==="swing"?t.styleSwing:t.styleBossa}</option>)}</select></label><label>{t.drumsLevel}<input type="range" min="0" max="1.4" step="0.05" value={drumLevel} onChange={e=>setDrumLevel(+e.target.value)}/></label><label>{t.pianoLevel}<input type="range" min="0" max="1.4" step="0.05" value={compLevel} onChange={e=>setCompLevel(+e.target.value)}/></label><label className="count-in"><input type="checkbox" checked={countIn} onChange={e=>setCountIn(e.target.checked)}/> {t.countIn}</label></div>}
           {source==="file"&&<div className="source-status"><label>{t.speed}<select value={speed} onChange={e=>setSpeed(+e.target.value)}><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label><button onClick={clearAudio}>{t.removeAudio}</button></div>}
         </div>
         <div className="loop-panel"><label><input type="checkbox" checked={loop} onChange={e=>setLoop(e.target.checked)}/> {t.loop}</label><select aria-label={t.loopFrom} value={safeLoopStart} onChange={e=>{const value=+e.target.value;setLoopStart(value);if(value>safeLoopEnd)setLoopEnd(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopFrom} {i+1}: {step.chord.raw}</option>)}</select><select aria-label={t.loopTo} value={safeLoopEnd} onChange={e=>{const value=+e.target.value;setLoopEnd(value);if(value<safeLoopStart)setLoopStart(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopTo} {i+1}: {step.chord.raw}</option>)}</select></div>

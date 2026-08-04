@@ -134,6 +134,19 @@ describe("backing source", () => {
     expect(screen.getByLabelText("Feel")).toBeDefined();
     expect(screen.getByLabelText("Drums")).toBeDefined();
     expect(screen.getByLabelText("Piano")).toBeDefined();
+    expect(screen.getByLabelText("One bar count-in")).toBeDefined();
+  });
+
+  it("loading a preset selects the feel that suits it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(nav().getByText("Repertoire"));
+    await user.click(screen.getByText("Blue Bossa"));
+    await user.click(screen.getByRole("tab", { name: "Backing track" }));
+    await user.click(screen.getByRole("button", { name: "Generated" }));
+
+    expect(screen.getByLabelText<HTMLSelectElement>("Feel").value).toBe("bossa");
   });
 });
 

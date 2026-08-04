@@ -62,7 +62,7 @@ export class BackingPlayer {
     return elapsed % this.cycleBeats;
   }
 
-  start(events: BackingEvent[], bpm: number, cycleBeats: number, fromBeat = 0) {
+  start(events: BackingEvent[], bpm: number, cycleBeats: number, fromBeat = 0, countInBeats = 0) {
     this.stop();
     if (!events.length || cycleBeats <= 0) return;
 
@@ -70,7 +70,9 @@ export class BackingPlayer {
     this.bpm = bpm;
     this.cycleBeats = cycleBeats;
     this.cursorBeats = fromBeat;
-    this.anchor = this.context.currentTime + START_LEAD - (fromBeat * 60) / bpm;
+    const beatsPerSecond = bpm / 60;
+    this.anchor = this.context.currentTime + START_LEAD + countInBeats / beatsPerSecond - fromBeat / beatsPerSecond;
+    if (countInBeats > 0) this.countIn(countInBeats, beatsPerSecond);
 
     this.schedule();
     this.timer = window.setInterval(() => this.schedule(), TICK_MS);
@@ -173,36 +175,58 @@ export class BackingPlayer {
 
   private chord(notes: number[], when: number, gain: number, duration: number) {
     const perNote = gain / Math.max(2, notes.length);
+    const hold = Math.max(0.35, duration);
 
     notes.forEach((note, index) => {
       const frequency = 440 * 2 ** ((note - 69) / 12);
       // A touch of roll, so the voicing sounds struck rather than triggered.
       const at = when + index * 0.008;
-      const envelope = this.context.createGain();
-      const tone = this.context.createOscillator();
-      const body = this.context.createOscillator();
 
-      tone.type = "triangle";
-      body.type = "sine";
-      tone.frequency.value = frequency;
-      body.frequency.value = frequency * 2;
+      // A struck string loses its high partials far faster than its fundamental.
+      // Without that, an exponential decay on everything sounds like an organ.
+      const filter = this.context.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.Q.value = 0.6;
+      filter.frequency.setValueAtTime(Math.min(7000, frequency * 9), at);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(700, frequency * 2.4), at + 0.5);
 
-      envelope.gain.setValueAtTime(0.0001, at);
-      envelope.gain.exponentialRampToValueAtTime(perNote, at + 0.012);
-      envelope.gain.exponentialRampToValueAtTime(perNote * 0.28, at + 0.16);
-      envelope.gain.exponentialRampToValueAtTime(0.0001, at + Math.max(0.3, duration));
+      const fundamental = this.context.createOscillator();
+      const fundamentalGain = this.context.createGain();
+      fundamental.type = "triangle";
+      fundamental.frequency.value = frequency;
+      fundamentalGain.gain.setValueAtTime(0.0001, at);
+      fundamentalGain.gain.exponentialRampToValueAtTime(perNote, at + 0.008);
+      fundamentalGain.gain.exponentialRampToValueAtTime(perNote * 0.3, at + 0.28);
+      fundamentalGain.gain.exponentialRampToValueAtTime(0.0001, at + hold);
 
-      const colour = this.context.createGain();
-      colour.gain.value = 0.28;
-      body.connect(colour);
-      colour.connect(envelope);
-      tone.connect(envelope);
-      envelope.connect(this.comp);
+      // The strike: bright, and gone in a fifth of a second.
+      const partial = this.context.createOscillator();
+      const partialGain = this.context.createGain();
+      partial.type = "sine";
+      partial.frequency.value = frequency * 3.01;
+      partialGain.gain.setValueAtTime(0.0001, at);
+      partialGain.gain.exponentialRampToValueAtTime(perNote * 0.3, at + 0.006);
+      partialGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
 
-      tone.start(at);
-      body.start(at);
-      tone.stop(at + Math.max(0.35, duration) + 0.05);
-      body.stop(at + Math.max(0.35, duration) + 0.05);
+      fundamental.connect(fundamentalGain);
+      partial.connect(partialGain);
+      fundamentalGain.connect(filter);
+      partialGain.connect(filter);
+      filter.connect(this.comp);
+
+      fundamental.start(at);
+      partial.start(at);
+      fundamental.stop(at + hold + 0.05);
+      partial.stop(at + hold + 0.05);
     });
+  }
+
+  /** One bar of stick clicks before the form starts, so you can come in on time. */
+  private countIn(beats: number, beatsPerSecond: number) {
+    for (let index = 0; index < beats; index += 1) {
+      const when = this.anchor - (beats - index) / beatsPerSecond;
+      if (when < this.context.currentTime) continue;
+      this.drum("rim", when, index === 0 ? 1 : 0.6);
+    }
   }
 }

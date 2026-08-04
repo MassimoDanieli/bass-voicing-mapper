@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BACKING_STYLES, backingEvents, compVoicing } from "./backing";
 import { parseChord, parseSong } from "./music";
+import { PRESETS } from "./content";
 
 const pitchClasses = (notes: number[]) => notes.map((note) => note % 12).sort((a, b) => a - b);
 
@@ -93,6 +94,23 @@ describe("backingEvents", () => {
     for (const style of BACKING_STYLES) {
       const first = backingEvents(steps, style).filter((event) => event.beat === 0);
       expect(first.some((event) => event.type === "drum"), style).toBe(true);
+    }
+  });
+});
+
+describe("presets", () => {
+  it("every preset declares a feel the backing engine understands", () => {
+    for (const preset of PRESETS) {
+      expect(BACKING_STYLES, preset.title).toContain(preset.feel);
+    }
+  });
+
+  it("every preset progression parses, so loading one cannot land on an empty grid", () => {
+    for (const preset of PRESETS) {
+      const { steps, invalid } = parseSong(preset.progression, 4);
+      expect(invalid, preset.title).toEqual([]);
+      expect(steps.length, preset.title).toBeGreaterThan(0);
+      expect(backingEvents(steps, preset.feel).length, preset.title).toBeGreaterThan(0);
     }
   });
 });
