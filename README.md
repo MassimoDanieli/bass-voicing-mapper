@@ -15,6 +15,7 @@ An interactive 4-string bass fretboard for visualizing chord tones, finding comp
 - built-in metronome, adjustable tempo, and A–B loop
 - optional local backing track with playback speed control
 - saved songs in browser storage
+- four pages: instrument, repertoire, saved songs, and a help page
 - 20 song and practice progressions
 - English and Italian interface (English by default)
 - responsive layout for desktop and mobile

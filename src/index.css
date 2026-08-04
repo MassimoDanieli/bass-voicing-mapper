@@ -9,3 +9,28 @@
 .panel-tabs+.sync-panel{border-top:0;padding-top:2px}
 @media(max-width:900px){.panel-tabs{grid-column:1/-1}}
 @media(max-width:560px){.intro{padding-top:16px}.intro h1{font-size:21px}.intro span{display:none}}
+.nav{display:flex;gap:2px;margin-left:22px}
+.nav a{padding:7px 12px;border-radius:8px;font-size:13px;font-weight:750;color:var(--muted);text-decoration:none;white-space:nowrap;transition:.16s ease}
+.nav a:hover{background:#efe6d6;color:var(--ink)}
+.nav a.current{background:var(--ink);color:var(--paper)}
+.nav a:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.panel-link{display:inline-block;margin-top:9px;font-size:12px;font-weight:750;color:var(--terra);text-decoration:none}
+.panel-link:hover{text-decoration:underline}
+.empty-link{margin-top:12px;font-size:13px;font-weight:750;color:var(--terra);text-decoration:none}
+.saved-card{position:relative;display:grid}
+.saved-card>button:first-child{width:100%}
+.saved-delete{position:absolute;top:9px;right:9px;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fffdf7;color:var(--muted);font-size:15px;line-height:1;cursor:pointer}
+.saved-delete:hover{border-color:var(--terra);color:var(--terra)}
+.help-section{max-width:1540px;margin:34px auto 0;padding:0 3vw}
+.help-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;margin-top:20px}
+.help-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:20px}
+.help-card h3{font:650 19px/1.3 Georgia,serif;margin:0 0 10px}
+.help-card p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 9px}
+.help-card p:last-of-type{margin-bottom:0}
+.help-card dl{display:grid;gap:7px;margin:14px 0 0}
+.help-card dl>div{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px;align-items:baseline}
+.help-card dt{font-size:12px;font-weight:750}
+.help-card dd{margin:0;min-width:0}
+.help-card dd code{font-size:12px;color:var(--muted);word-break:break-word}
+@media(max-width:900px){.nav{margin-left:12px;gap:0}.nav a{padding:7px 9px;font-size:12px}}
+@media(max-width:560px){.topbar{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}.nav{order:3;width:100%;margin:0;overflow-x:auto}.help-section{padding:0 14px}.help-grid{grid-template-columns:1fr}.help-card dl>div{grid-template-columns:1fr;gap:2px}}

@@ -1,0 +1,113 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * These are not unit tests. They mount the real app and check that each route
+ * renders and that the controls that must always be reachable, are.
+ */
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import App from "./App";
+
+beforeEach(() => {
+  window.scrollTo = () => undefined; // jsdom does not implement it and logs on every call
+  window.history.pushState(null, "", "/");
+  localStorage.clear();
+});
+afterEach(cleanup);
+
+const nav = () => within(screen.getByRole("navigation"));
+
+describe("routes", () => {
+  it("opens on the instrument", () => {
+    render(<App />);
+    expect(screen.getByLabelText("Progression")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Play" })).toBeDefined();
+  });
+
+  it("walks to every page and back, and updates the URL", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(nav().getByText("Repertoire"));
+    expect(window.location.pathname).toBe("/repertoire");
+    expect(screen.getByText("Blue Bossa")).toBeDefined();
+
+    await user.click(nav().getByText("Help"));
+    expect(window.location.pathname).toBe("/help");
+    expect(screen.getByText("Writing a progression")).toBeDefined();
+
+    await user.click(nav().getByText("My songs"));
+    expect(window.location.pathname).toBe("/songs");
+    expect(screen.getByText("No saved songs yet")).toBeDefined();
+
+    await user.click(nav().getByText("Studio"));
+    expect(window.location.pathname).toBe("/");
+    expect(screen.getByLabelText("Progression")).toBeDefined();
+  });
+
+  it("renders the instrument for an unknown path", () => {
+    window.history.pushState(null, "", "/repertorio");
+    render(<App />);
+    expect(screen.getByLabelText("Progression")).toBeDefined();
+  });
+
+  it("loading a preset returns to the instrument with the progression applied", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(nav().getByText("Repertoire"));
+    await user.click(screen.getByText("Blue Bossa"));
+
+    expect(window.location.pathname).toBe("/");
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Progression").value)
+      .toBe("Cm7 Fm7 Dm7b5 G7 Cm7");
+  });
+});
+
+describe("control panel", () => {
+  it("swaps content between the two tabs", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByLabelText("Progression")).toBeDefined();
+    await user.click(screen.getByRole("tab", { name: "Backing track" }));
+
+    expect(screen.queryByLabelText("Progression")).toBeNull();
+    expect(screen.getByText("Choose an audio file")).toBeDefined();
+  });
+
+  it("keeps the transport reachable from both tabs", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "Play" })).toBeDefined();
+    await user.click(screen.getByRole("tab", { name: "Backing track" }));
+    expect(screen.getByRole("button", { name: "Play" })).toBeDefined();
+  });
+});
+
+describe("the chord engine reaches the screen", () => {
+  it("spells the seventh of F7 as E flat", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const progression = screen.getByLabelText("Progression");
+    await user.clear(progression);
+    await user.type(progression, "F7");
+
+    // Degree-aware spelling: D sharp is the same pitch and the wrong note.
+    expect(await screen.findAllByTitle(/^E♭, degree b7$/)).not.toHaveLength(0);
+  });
+
+  it("reports unrecognized chords instead of guessing", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const progression = screen.getByLabelText("Progression");
+    await user.clear(progression);
+    await user.type(progression, "Cm7 Cfoo");
+
+    expect(await screen.findByText(/Not recognized: Cfoo/)).toBeDefined();
+  });
+});
