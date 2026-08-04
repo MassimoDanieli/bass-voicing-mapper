@@ -21,6 +21,8 @@ import {
 } from "./transport";
 
 import { COPY, PRESETS, type Lang, type Preset } from "./content";
+import { BACKING_STYLES, backingEvents, type BackingStyle } from "./backing";
+import { BackingPlayer } from "./backingPlayer";
 import { Link, navigate, useRoute } from "./router";
 import Help from "./pages/Help";
 import Repertoire from "./pages/Repertoire";
@@ -56,12 +58,16 @@ export default function App() {
   const [mode,setMode] = useState<PracticeMode>("chords"); const [playing,setPlaying] = useState(false);
   const [beat,setBeat] = useState(0); const [noteStep,setNoteStep] = useState(0); const [metro,setMetro] = useState(true);
   const [audioUrl,setAudioUrl] = useState(""); const [audioName,setAudioName] = useState("");
+  const [source,setSource] = useState<"metronome"|"generated"|"file">("metronome");
+  const [style,setStyle] = useState<BackingStyle>("swing");
+  const [drumLevel,setDrumLevel] = useState(0.9); const [compLevel,setCompLevel] = useState(0.55); const [countIn,setCountIn] = useState(true);
   const [speed,setSpeed] = useState(1); const [offset,setOffset] = useState(0); const [loop,setLoop] = useState(false);
   const [loopStart,setLoopStart] = useState(0); const [loopEnd,setLoopEnd] = useState(Number.MAX_SAFE_INTEGER);
   const [songTitle,setSongTitle] = useState(""); const [savedSongs,setSavedSongs] = useState<SavedSong[]>([]);
   const [warning,setWarning] = useState("");
   const audioRef = useRef<AudioContext | null>(null);
   const mediaRef = useRef<HTMLAudioElement | null>(null);
+  const playerRef = useRef<BackingPlayer | null>(null);
 
   // Voicing search costs 100ms+ on long progressions; keep it off the keystroke path.
   const deferredInput = useDeferredValue(input);
@@ -87,6 +93,12 @@ export default function App() {
   const stepBeats = steps[Math.min(active,Math.max(0,steps.length-1))]?.beats ?? beats;
   const safeLoopStart = Math.min(loopStart,Math.max(0,steps.length-1));
   const safeLoopEnd = Math.max(safeLoopStart,Math.min(loopEnd,Math.max(0,steps.length-1)));
+  const region = useMemo(()=>{
+    const first = loop ? safeLoopStart : 0;
+    const last = loop ? safeLoopEnd : steps.length-1;
+    const slice = steps.slice(first,last+1);
+    return { slice, offset: stepStartBeat(grid,first), beats: beatGrid(slice).total, events: backingEvents(slice,style) };
+  },[steps,grid,loop,safeLoopStart,safeLoopEnd,style]);
 
   // The interval callback must not read state through a stale closure, and must not
   // run side effects inside a setState updater: refs carry the live transport position.
@@ -107,7 +119,7 @@ export default function App() {
     return audioRef.current;
   };
   const click = (accent=false) => {
-    if (!metro) return;
+    if (!metro || source==="generated") return;
     const ctx=audioContext(), osc=ctx.createOscillator(), gain=ctx.createGain();
     osc.frequency.value=accent?1000:720; gain.gain.setValueAtTime(.055,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.055);
     osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime+.06);
@@ -132,7 +144,7 @@ export default function App() {
   },[playing,speed,audioUrl]);
   useEffect(()=>{
     // Metronome only: the interval is the clock.
-    if (!playing || !steps.length || audioUrl) return;
+    if (!playing || !steps.length || source!=="metronome") return;
     click(true);
     const id=window.setInterval(()=>{
       const current=cursor.current;
@@ -151,11 +163,11 @@ export default function App() {
     },60000/bpm);
     return ()=>window.clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[playing,bpm,mode,steps,beats,metro,loop,safeLoopStart,safeLoopEnd,audioUrl]);
+  },[playing,bpm,mode,steps,beats,metro,loop,safeLoopStart,safeLoopEnd,source]);
   useEffect(()=>{
     // Backing track: the audio element is the clock, so playback rate and buffering
     // cannot pull the fretboard out of sync with what you are hearing.
-    if (!playing || !audioUrl || !steps.length) return;
+    if (!playing || source!=="file" || !steps.length) return;
     let frame=0;
     const follow=()=>{
       frame=window.requestAnimationFrame(follow);
@@ -179,7 +191,32 @@ export default function App() {
     frame=window.requestAnimationFrame(follow);
     return ()=>window.cancelAnimationFrame(frame);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[playing,audioUrl,steps,grid,bpm,offset,mode,metro,loop,safeLoopStart,safeLoopEnd]);
+  },[playing,source,audioUrl,steps,grid,bpm,offset,mode,metro,loop,safeLoopStart,safeLoopEnd]);
+  useEffect(()=>{
+    // Generated backing: the AudioContext clock drives both the sound and the fretboard.
+    if (!playing || source!=="generated" || !region.events.length) return;
+    const player = playerRef.current ??= new BackingPlayer(audioContext());
+    player.setLevels(drumLevel,compLevel);
+    player.start(region.events,bpm,region.beats,Math.max(0,stepStartBeat(grid,cursor.current.active)-region.offset),countIn?4:0);
+    let frame=0;
+    const follow=()=>{
+      frame=window.requestAnimationFrame(follow);
+      const within=player.position();
+      if (within<0) return;
+      const at=locate(grid,region.offset+within);
+      if (!at) return;
+      const current=cursor.current;
+      if (at.index===current.active && at.beatInStep===current.beat) return;
+      if (mode!=="chords") setNoteStep(n=>at.index===current.active?n+1:0);
+      cursor.current={beat:at.beatInStep,active:at.index};
+      setBeat(at.beatInStep); setActive(at.index);
+    };
+    frame=window.requestAnimationFrame(follow);
+    return ()=>{ window.cancelAnimationFrame(frame); player.stop(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[playing,source,region,bpm,grid,mode,countIn]);
+  useEffect(()=>{ playerRef.current?.setLevels(drumLevel,compLevel); },[drumLevel,compLevel]);
+  useEffect(()=>()=>{ playerRef.current?.dispose(); },[]);
   useEffect(()=>()=>{ if(audioUrl) URL.revokeObjectURL(audioUrl); },[audioUrl]);
 
   const persist = (next:SavedSong[]) => {
@@ -187,14 +224,19 @@ export default function App() {
     try { window.localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
     catch { setWarning(t.storageFull); }
   };
-  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
+  const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setStyle(preset.feel); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
   const loadAudio = (file?:File) => {
     if (!file) return;
     mediaRef.current?.pause();
     setAudioUrl(current=>{ if(current) URL.revokeObjectURL(current); return URL.createObjectURL(file); });
-    setAudioName(file.name); setPlaying(false);
+    setAudioName(file.name); setSource("file"); setPlaying(false);
   };
-  const clearAudio = () => { mediaRef.current?.pause(); setPlaying(false); setAudioUrl(current=>{ if(current) URL.revokeObjectURL(current); return ""; }); setAudioName(""); };
+  const chooseSource = (next:"metronome"|"generated"|"file") => {
+    setPlaying(false);
+    if (next!=="file") mediaRef.current?.pause();
+    setSource(next);
+  };
+  const clearAudio = () => { mediaRef.current?.pause(); setPlaying(false); setSource("metronome"); setAudioUrl(current=>{ if(current) URL.revokeObjectURL(current); return ""; }); setAudioName(""); };
   const saveSong = () => {
     const title=songTitle.trim()||`Song ${savedSongs.length+1}`;
     persist([{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,title,progression:input,bpm},...savedSongs].slice(0,20));
@@ -231,7 +273,9 @@ export default function App() {
           <label className={'source-choice '+(audioUrl?'selected':'')}><span>{audioName||t.chooseAudio}</span><input type="file" accept="audio/*" onChange={e=>loadAudio(e.target.files?.[0])}/></label>
           {audioUrl&&<audio ref={mediaRef} src={audioUrl} onEnded={()=>setPlaying(false)} preload="metadata" controls/>}
           {audioUrl&&<div className="offset-row"><label>{t.offset}<input type="number" min="0" step="0.05" value={offset} onChange={e=>setOffset(Math.max(0,+e.target.value||0))}/></label><button onClick={markDownbeat}>{t.markDownbeat}</button></div>}
-          <div className="source-status"><button className={audioUrl?'':'active'} onClick={clearAudio}>{t.noSource}</button>{audioUrl&&<label>{t.speed}<select value={speed} onChange={e=>setSpeed(+e.target.value)}><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label>}</div>
+          <div className="mode-switch source-switch">{([["metronome",t.srcMetro],["generated",t.srcGenerated],["file",t.srcFile]] as ["metronome"|"generated"|"file",string][]).map(([value,label])=><button key={value} className={source===value?"chosen":""} disabled={value==="file"&&!audioUrl} onClick={()=>chooseSource(value)}>{label}</button>)}</div>
+          {source==="generated"&&<div className="backing-controls"><small>{t.generatedHint}</small><label>{t.styleLabel}<select value={style} onChange={e=>setStyle(e.target.value as BackingStyle)}>{BACKING_STYLES.map(value=><option key={value} value={value}>{value==="straight"?t.styleStraight:value==="swing"?t.styleSwing:t.styleBossa}</option>)}</select></label><label>{t.drumsLevel}<input type="range" min="0" max="1.4" step="0.05" value={drumLevel} onChange={e=>setDrumLevel(+e.target.value)}/></label><label>{t.pianoLevel}<input type="range" min="0" max="1.4" step="0.05" value={compLevel} onChange={e=>setCompLevel(+e.target.value)}/></label><label className="count-in"><input type="checkbox" checked={countIn} onChange={e=>setCountIn(e.target.checked)}/> {t.countIn}</label></div>}
+          {source==="file"&&<div className="source-status"><label>{t.speed}<select value={speed} onChange={e=>setSpeed(+e.target.value)}><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label><button onClick={clearAudio}>{t.removeAudio}</button></div>}
         </div>
         <div className="loop-panel"><label><input type="checkbox" checked={loop} onChange={e=>setLoop(e.target.checked)}/> {t.loop}</label><select aria-label={t.loopFrom} value={safeLoopStart} onChange={e=>{const value=+e.target.value;setLoopStart(value);if(value>safeLoopEnd)setLoopEnd(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopFrom} {i+1}: {step.chord.raw}</option>)}</select><select aria-label={t.loopTo} value={safeLoopEnd} onChange={e=>{const value=+e.target.value;setLoopEnd(value);if(value<safeLoopStart)setLoopStart(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopTo} {i+1}: {step.chord.raw}</option>)}</select></div>
         <div className="save-panel"><p>{t.saveSong}</p><div><input aria-label={t.songName} placeholder={t.songName} value={songTitle} onChange={e=>setSongTitle(e.target.value)}/><button onClick={saveSong}>{t.save}</button></div>{warning&&<small className="parse-error" role="alert">{warning}</small>}{savedSongs.length>0&&<Link className="panel-link" to="/songs">{savedSongs.length} {t.saved} · {t.viewSaved}</Link>}</div>
