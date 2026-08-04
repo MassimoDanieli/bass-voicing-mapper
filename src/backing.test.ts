@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BACKING_STYLES, backingEvents, compVoicing } from "./backing";
 import { parseChord, parseSong } from "./music";
-import { PRESETS } from "./content";
+import { PRESETS, songNameFromFile } from "./content";
 
 const pitchClasses = (notes: number[]) => notes.map((note) => note % 12).sort((a, b) => a - b);
 
@@ -112,5 +112,14 @@ describe("presets", () => {
       expect(steps.length, preset.title).toBeGreaterThan(0);
       expect(backingEvents(steps, preset.feel).length, preset.title).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("songNameFromFile", () => {
+  it("turns a file name into something worth showing", () => {
+    expect(songNameFromFile("03 - Song_for_My_Father.mp3")).toBe("Song for My Father");
+    expect(songNameFromFile("Blue Bossa.wav")).toBe("Blue Bossa");
+    expect(songNameFromFile("autumn-leaves-take2.m4a")).toBe("autumn leaves take2");
+    expect(songNameFromFile(".mp3")).toBe(".mp3");
   });
 });

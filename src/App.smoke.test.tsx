@@ -127,6 +127,38 @@ describe("saved songs", () => {
   });
 });
 
+describe("the song name follows what you loaded", () => {
+  it("takes the name of an audio file, replacing a stale preset title", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(nav().getByText("Repertoire"));
+    await user.click(screen.getByText("Blue Bossa"));
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Blue Bossa");
+
+    await user.click(screen.getByRole("tab", { name: "Backing track" }));
+    await user.upload(
+      screen.getByLabelText("Choose an audio file"),
+      new File(["x"], "03 - Song_for_My_Father.mp3", { type: "audio/mpeg" }),
+    );
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Song for My Father");
+  });
+
+  it("drops the artist line once you edit the chords yourself", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(nav().getByText("Repertoire"));
+    await user.click(screen.getByText("Blue Bossa"));
+    expect(screen.getByText(/Kenny Dorham/)).toBeDefined();
+
+    await user.type(screen.getByLabelText("Progression"), " G7");
+    expect(screen.queryByText(/Kenny Dorham/)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Blue Bossa");
+  });
+});
+
 describe("backing source", () => {
   it("starts on the metronome and offers the audio file only once one is loaded", async () => {
     const user = userEvent.setup();

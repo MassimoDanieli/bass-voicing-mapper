@@ -45,3 +45,9 @@ for (const target of [globalThis, typeof window === "undefined" ? null : window]
     writable: true,
   });
 }
+
+// jsdom has no object URLs; the app only needs them to point an <audio> at a file.
+if (typeof URL.createObjectURL !== "function") {
+  URL.createObjectURL = () => "blob:test";
+  URL.revokeObjectURL = () => undefined;
+}

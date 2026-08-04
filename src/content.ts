@@ -32,3 +32,13 @@ export const COPY = {
 };
 
 export type Copy = typeof COPY.en;
+
+/** "01 - Blue_Bossa (take 2).mp3" reads better as a song name than as a file name. */
+export function songNameFromFile(fileName: string) {
+  return fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/^\s*\d+\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim() || fileName;
+}
