@@ -10,7 +10,9 @@ import App from "./App";
 beforeEach(() => {
   window.scrollTo = () => undefined; // jsdom does not implement it and logs on every call
   window.history.pushState(null, "", "/");
-  localStorage.clear();
+  // Node 22+ defines a disabled localStorage global that shadows the jsdom one,
+  // so reach it through window rather than as a bare identifier.
+  window.localStorage.clear();
 });
 afterEach(cleanup);
 
@@ -82,6 +84,24 @@ describe("control panel", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeDefined();
     await user.click(screen.getByRole("tab", { name: "Backing track" }));
     expect(screen.getByRole("button", { name: "Play" })).toBeDefined();
+  });
+});
+
+describe("saved songs", () => {
+  it("saves from the backing panel and lists it on its own page", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: "Backing track" }));
+    await user.type(screen.getByLabelText("Song name"), "Blue Bossa study");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Proves storage is actually reachable under test, not silently swallowed
+    // by the try/catch around it.
+    expect(window.localStorage.getItem("bvm:songs")).toContain("Blue Bossa study");
+
+    await user.click(nav().getByText("My songs"));
+    expect(screen.getByText("Blue Bossa study")).toBeDefined();
   });
 });
 

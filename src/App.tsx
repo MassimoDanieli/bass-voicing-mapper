@@ -39,7 +39,7 @@ const clampFret = (value:number) => Number.isFinite(value) ? Math.max(0,Math.min
 
 function readSavedSongs():SavedSong[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(raw) ? raw as SavedSong[] : [];
   } catch { return []; }
 }
@@ -184,7 +184,7 @@ export default function App() {
 
   const persist = (next:SavedSong[]) => {
     setSavedSongs(next);
-    try { localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
+    try { window.localStorage.setItem(STORAGE_KEY,JSON.stringify(next)); setWarning(""); }
     catch { setWarning(t.storageFull); }
   };
   const loadPreset = (preset:Preset) => { setInput(preset.progression); setBpm(preset.bpm); setSongTitle(preset.title); setPlaying(false); seekStep(0); navigate("/"); };
