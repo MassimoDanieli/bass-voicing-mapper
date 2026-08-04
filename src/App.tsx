@@ -10,6 +10,16 @@ import {
   type DegreeRole,
 } from "./music";
 
+import {
+  beatAtTime,
+  beatGrid,
+  locate,
+  stepEndBeat,
+  stepStartBeat,
+  stepStartTime,
+  timeOfBeat,
+} from "./transport";
+
 function colorForRole(role: DegreeRole) {
   if (role === "bass") return "root";
   return role === "sixth" || role === "suspension" ? "extension" : role;
@@ -46,8 +56,8 @@ const PRESETS: Preset[] = [
 ];
 
 const COPY = {
-  en:{header:"4-string bass · E–A–D–G",eyebrow:"CHORD MAP",hero1:"Find the right voicing,",hero2:"without leaving your zone.",intro:"See every chord tone and find the smoothest path across the fretboard.",sketch1:"voicing",sketch2:"minimum movement",sketch3:"full sound",progression:"Progression",hint:"Add beats with :number. Example: Am7:4 D7:4 Gmaj7:8",zone:"Fretboard zone",frets:"frets",show:"Show positions",optimized:"Optimized voicings",all:"Show all notes",practice:"Song practice",running:"● PLAYING",ready:"READY",chords:"Chords",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Default duration",beat:"beat",beats:"beats",pause:"Pause",play:"Play",restart:"Back to start",metro:"Toggle metronome",how:"How does it work?",howText:"Chord durations, player and fretboard share the same transport.",recommended:"Recommended voicing",root:"Root",third:"Third",fifth:"Fifth",seventh:"Seventh",smooth:"Smooth path",smoothText:"Voicings chosen for minimum movement.",none:"No chord recognized",try:"Try: G:4 A:4 D:8 or C-7 F7 Bbdim7 Ebdim7",invalid:"Not recognized",outOfRange:"No voicing in this fret range",repertoire:"REPERTOIRE",libraryTitle:"Progressions ready to play",libraryText:"Essential harmonic forms and simplified song progressions for bass practice.",exercises:"exercises",load:"Load →",footer:"Supports international notation with sharps and flats · Optimized for 4-string bass",player:"BACKING TRACK",chooseAudio:"Choose an audio file",noSource:"Metronome only",speed:"Speed",loop:"A–B loop",loopFrom:"From",loopTo:"To",saveSong:"Save song",songName:"Song name",save:"Save",saved:"Saved songs",delete:"Delete",storageFull:"Storage is full: delete a saved song and try again."},
-  it:{header:"Basso 4 corde · E–A–D–G",eyebrow:"MAPPA DEGLI ACCORDI",hero1:"Trova la voce giusta,",hero2:"senza cambiare zona.",intro:"Visualizza le note degli accordi e trova il percorso più fluido sulla tastiera.",sketch1:"voicing",sketch2:"movimento minimo",sketch3:"suono pieno",progression:"Progressione",hint:"Aggiungi i battiti con :numero. Esempio: Am7:4 D7:4 Gmaj7:8",zone:"Zona della tastiera",frets:"tasti",show:"Mostra le posizioni",optimized:"Rivolti ottimizzati",all:"Mostra tutte le note",practice:"Studio del brano",running:"● IN CORSO",ready:"PRONTO",chords:"Accordi",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Durata predefinita",beat:"battito",beats:"battiti",pause:"Pausa",play:"Avvia",restart:"Torna all’inizio",metro:"Attiva o disattiva metronomo",how:"Come funziona?",howText:"Durate, player e tastiera condividono gli stessi comandi.",recommended:"Voicing consigliato",root:"Fondamentale",third:"Terza",fifth:"Quinta",seventh:"Settima",smooth:"Percorso fluido",smoothText:"Voicing scelti per spostamenti minimi.",none:"Nessun accordo riconosciuto",try:"Prova: G:4 A:4 D:8 oppure C-7 F7 Bbdim7 Ebdim7",invalid:"Non riconosciuti",outOfRange:"Nessun voicing in questa zona",repertoire:"REPERTORIO",libraryTitle:"Progressioni da suonare subito",libraryText:"Forme armoniche essenziali e versioni semplificate per lo studio del basso.",exercises:"esercizi",load:"Carica →",footer:"Supporta notazione internazionale con diesis e bemolle · Ottimizzato per basso a 4 corde",player:"BASE DI ACCOMPAGNAMENTO",chooseAudio:"Scegli un file audio",noSource:"Solo metronomo",speed:"Velocità",loop:"Loop A–B",loopFrom:"Da",loopTo:"A",saveSong:"Salva brano",songName:"Nome del brano",save:"Salva",saved:"Brani salvati",delete:"Elimina",storageFull:"Spazio esaurito: elimina un brano salvato e riprova."}
+  en:{header:"4-string bass · E–A–D–G",eyebrow:"CHORD MAP",hero1:"Find the right voicing,",hero2:"without leaving your zone.",intro:"See every chord tone and find the smoothest path across the fretboard.",sketch1:"voicing",sketch2:"minimum movement",sketch3:"full sound",progression:"Progression",hint:"Add beats with :number. Example: Am7:4 D7:4 Gmaj7:8",zone:"Fretboard zone",frets:"frets",show:"Show positions",optimized:"Optimized voicings",all:"Show all notes",practice:"Song practice",running:"● PLAYING",ready:"READY",chords:"Chords",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Default duration",beat:"beat",beats:"beats",pause:"Pause",play:"Play",restart:"Back to start",metro:"Toggle metronome",how:"How does it work?",howText:"Chord durations, player and fretboard share the same transport.",recommended:"Recommended voicing",root:"Root",third:"Third",fifth:"Fifth",seventh:"Seventh",smooth:"Smooth path",smoothText:"Voicings chosen for minimum movement.",none:"No chord recognized",try:"Try: G:4 A:4 D:8 or C-7 F7 Bbdim7 Ebdim7",invalid:"Not recognized",outOfRange:"No voicing in this fret range",repertoire:"REPERTOIRE",libraryTitle:"Progressions ready to play",libraryText:"Essential harmonic forms and simplified song progressions for bass practice.",exercises:"exercises",load:"Load →",footer:"Supports international notation with sharps and flats · Optimized for 4-string bass",player:"BACKING TRACK",chooseAudio:"Choose an audio file",noSource:"Metronome only",speed:"Speed",offset:"First downbeat (s)",markDownbeat:"Set here",loop:"A–B loop",loopFrom:"From",loopTo:"To",saveSong:"Save song",songName:"Song name",save:"Save",saved:"Saved songs",delete:"Delete",storageFull:"Storage is full: delete a saved song and try again."},
+  it:{header:"Basso 4 corde · E–A–D–G",eyebrow:"MAPPA DEGLI ACCORDI",hero1:"Trova la voce giusta,",hero2:"senza cambiare zona.",intro:"Visualizza le note degli accordi e trova il percorso più fluido sulla tastiera.",sketch1:"voicing",sketch2:"movimento minimo",sketch3:"suono pieno",progression:"Progressione",hint:"Aggiungi i battiti con :numero. Esempio: Am7:4 D7:4 Gmaj7:8",zone:"Zona della tastiera",frets:"tasti",show:"Mostra le posizioni",optimized:"Rivolti ottimizzati",all:"Mostra tutte le note",practice:"Studio del brano",running:"● IN CORSO",ready:"PRONTO",chords:"Accordi",arpeggio:"Arpeggio",walking:"Walking",tempo:"Tempo",duration:"Durata predefinita",beat:"battito",beats:"battiti",pause:"Pausa",play:"Avvia",restart:"Torna all’inizio",metro:"Attiva o disattiva metronomo",how:"Come funziona?",howText:"Durate, player e tastiera condividono gli stessi comandi.",recommended:"Voicing consigliato",root:"Fondamentale",third:"Terza",fifth:"Quinta",seventh:"Settima",smooth:"Percorso fluido",smoothText:"Voicing scelti per spostamenti minimi.",none:"Nessun accordo riconosciuto",try:"Prova: G:4 A:4 D:8 oppure C-7 F7 Bbdim7 Ebdim7",invalid:"Non riconosciuti",outOfRange:"Nessun voicing in questa zona",repertoire:"REPERTORIO",libraryTitle:"Progressioni da suonare subito",libraryText:"Forme armoniche essenziali e versioni semplificate per lo studio del basso.",exercises:"esercizi",load:"Carica →",footer:"Supporta notazione internazionale con diesis e bemolle · Ottimizzato per basso a 4 corde",player:"BASE DI ACCOMPAGNAMENTO",chooseAudio:"Scegli un file audio",noSource:"Solo metronomo",speed:"Velocità",offset:"Primo battere (s)",markDownbeat:"Segna qui",loop:"Loop A–B",loopFrom:"Da",loopTo:"A",saveSong:"Salva brano",songName:"Nome del brano",save:"Salva",saved:"Brani salvati",delete:"Elimina",storageFull:"Spazio esaurito: elimina un brano salvato e riprova."}
 };
 
 const clampFret = (value:number) => Number.isFinite(value) ? Math.max(0,Math.min(24,Math.round(value))) : 0;
@@ -69,7 +79,7 @@ export default function App() {
   const [mode,setMode] = useState<PracticeMode>("chords"); const [playing,setPlaying] = useState(false);
   const [beat,setBeat] = useState(0); const [noteStep,setNoteStep] = useState(0); const [metro,setMetro] = useState(true);
   const [audioUrl,setAudioUrl] = useState(""); const [audioName,setAudioName] = useState("");
-  const [speed,setSpeed] = useState(1); const [loop,setLoop] = useState(false);
+  const [speed,setSpeed] = useState(1); const [offset,setOffset] = useState(0); const [loop,setLoop] = useState(false);
   const [loopStart,setLoopStart] = useState(0); const [loopEnd,setLoopEnd] = useState(Number.MAX_SAFE_INTEGER);
   const [songTitle,setSongTitle] = useState(""); const [savedSongs,setSavedSongs] = useState<SavedSong[]>([]);
   const [warning,setWarning] = useState("");
@@ -81,6 +91,7 @@ export default function App() {
   const song = useMemo(() => parseSong(deferredInput,beats),[deferredInput,beats]);
   const steps = song.steps;
   const parsed = useMemo(() => steps.map(step=>step.chord),[steps]);
+  const grid = useMemo(() => beatGrid(steps),[steps]);
   const { path, unreachable } = useMemo(() => optimizePath(parsed,from,to),[parsed,from,to]);
   const chord:Chord | undefined = parsed[Math.min(active, Math.max(0,parsed.length-1))];
   const fullSelected = useMemo(() => optimized ? path[Math.min(active,Math.max(0,path.length-1))] ?? [] : [],[optimized,path,active]);
@@ -105,13 +116,13 @@ export default function App() {
   const cursor = useRef({beat:0,active:0});
   useEffect(()=>{ cursor.current={beat,active}; },[beat,active]);
 
-  const stepTime = (index:number) => steps.slice(0,index).reduce((sum,step)=>sum+step.beats,0)*60/bpm;
   const seekStep = (index:number) => {
     const next=Math.max(0,Math.min(index,Math.max(0,steps.length-1)));
     cursor.current={beat:0,active:next};
     setActive(next); setBeat(0); setNoteStep(0);
-    if (mediaRef.current) mediaRef.current.currentTime=stepTime(next);
+    if (mediaRef.current) mediaRef.current.currentTime=stepStartTime(grid,next,bpm,offset);
   };
+  const markDownbeat = () => { if (mediaRef.current) setOffset(Math.max(0,Number(mediaRef.current.currentTime.toFixed(2)))); };
 
   const audioContext = () => {
     const Ctx = window.AudioContext || (window as typeof window & {webkitAudioContext:typeof AudioContext}).webkitAudioContext;
@@ -143,7 +154,8 @@ export default function App() {
     if (playing) void mediaRef.current.play().catch(()=>setPlaying(false)); else mediaRef.current.pause();
   },[playing,speed,audioUrl]);
   useEffect(()=>{
-    if (!playing || !steps.length) return;
+    // Metronome only: the interval is the clock.
+    if (!playing || !steps.length || audioUrl) return;
     click(true);
     const id=window.setInterval(()=>{
       const current=cursor.current;
@@ -157,13 +169,40 @@ export default function App() {
       let following=current.active+1;
       if (loop && following>safeLoopEnd) following=safeLoopStart;
       if (following>=steps.length) { setPlaying(false); return; }
-      if (loop && following===safeLoopStart && mediaRef.current) mediaRef.current.currentTime=stepTime(safeLoopStart);
       cursor.current={beat:0,active:following};
       setBeat(0); setActive(following);
-    },60000/bpm/speed);
+    },60000/bpm);
     return ()=>window.clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[playing,bpm,mode,steps,beats,metro,speed,loop,safeLoopStart,safeLoopEnd]);
+  },[playing,bpm,mode,steps,beats,metro,loop,safeLoopStart,safeLoopEnd,audioUrl]);
+  useEffect(()=>{
+    // Backing track: the audio element is the clock, so playback rate and buffering
+    // cannot pull the fretboard out of sync with what you are hearing.
+    if (!playing || !audioUrl || !steps.length) return;
+    let frame=0;
+    const follow=()=>{
+      frame=window.requestAnimationFrame(follow);
+      const media=mediaRef.current;
+      if (!media) return;
+      const position=beatAtTime(media.currentTime,bpm,offset);
+      if (loop) {
+        const openBeat=stepStartBeat(grid,safeLoopStart);
+        const closeBeat=stepEndBeat(grid,steps,safeLoopEnd);
+        if (position>=closeBeat || position<openBeat-0.25) { media.currentTime=timeOfBeat(openBeat,bpm,offset); return; }
+      }
+      const at=locate(grid,position);
+      if (!at) return;
+      const current=cursor.current;
+      if (at.index===current.active && at.beatInStep===current.beat) return;
+      click(at.beatInStep===0);
+      if (mode!=="chords") setNoteStep(n=>at.index===current.active?n+1:0);
+      cursor.current={beat:at.beatInStep,active:at.index};
+      setBeat(at.beatInStep); setActive(at.index);
+    };
+    frame=window.requestAnimationFrame(follow);
+    return ()=>window.cancelAnimationFrame(frame);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[playing,audioUrl,steps,grid,bpm,offset,mode,metro,loop,safeLoopStart,safeLoopEnd]);
   useEffect(()=>()=>{ if(audioUrl) URL.revokeObjectURL(audioUrl); },[audioUrl]);
 
   const persist = (next:SavedSong[]) => {
@@ -209,6 +248,7 @@ export default function App() {
           <p>{t.player}</p>
           <label className={'source-choice '+(audioUrl?'selected':'')}><span>{audioName||t.chooseAudio}</span><input type="file" accept="audio/*" onChange={e=>loadAudio(e.target.files?.[0])}/></label>
           {audioUrl&&<audio ref={mediaRef} src={audioUrl} onEnded={()=>setPlaying(false)} preload="metadata" controls/>}
+          {audioUrl&&<div className="offset-row"><label>{t.offset}<input type="number" min="0" step="0.05" value={offset} onChange={e=>setOffset(Math.max(0,+e.target.value||0))}/></label><button onClick={markDownbeat}>{t.markDownbeat}</button></div>}
           <div className="source-status"><button className={audioUrl?'':'active'} onClick={clearAudio}>{t.noSource}</button>{audioUrl&&<label>{t.speed}<select value={speed} onChange={e=>setSpeed(+e.target.value)}><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label>}</div>
         </div>
         <div className="loop-panel"><label><input type="checkbox" checked={loop} onChange={e=>setLoop(e.target.checked)}/> {t.loop}</label><select aria-label={t.loopFrom} value={safeLoopStart} onChange={e=>{const value=+e.target.value;setLoopStart(value);if(value>safeLoopEnd)setLoopEnd(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopFrom} {i+1}: {step.chord.raw}</option>)}</select><select aria-label={t.loopTo} value={safeLoopEnd} onChange={e=>{const value=+e.target.value;setLoopEnd(value);if(value<safeLoopStart)setLoopStart(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopTo} {i+1}: {step.chord.raw}</option>)}</select></div>
