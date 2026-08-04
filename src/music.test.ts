@@ -4,8 +4,11 @@ import {
   noteName,
   omittedTones,
   optimize,
+  optimizePath,
   parseChord,
   parseProgression,
+  parseSong,
+  spellTone,
 } from "./music";
 
 describe("parseChord", () => {
@@ -13,11 +16,36 @@ describe("parseChord", () => {
     expect(parseChord("Cfoo")).toBeNull();
   });
 
+  it("does not resolve qualities through Object.prototype", () => {
+    // Regression: ALIASES was an object literal, so `Cconstructor` returned a
+    // function, passed the undefined check, and threw inside a render.
+    for (const symbol of ["Cconstructor", "CtoString", "C__proto__", "ChasOwnProperty", "CvalueOf"]) {
+      expect(() => parseChord(symbol)).not.toThrow();
+      expect(parseChord(symbol)).toBeNull();
+    }
+  });
+
   it("recognizes common aliases and Unicode accidentals", () => {
     expect(parseChord("C-7")?.quality).toBe("m7");
     expect(parseChord("CM7")?.quality).toBe("maj7");
     expect(parseChord("B♭°7")?.quality).toBe("dim7");
     expect(parseChord("F♯min7b5")?.quality).toBe("m7b5");
+  });
+
+  it("reads uppercase M as major, not as minor", () => {
+    expect(parseChord("CM")?.quality).toBe("maj");
+    expect(parseChord("Cm")?.quality).toBe("m");
+  });
+
+  it("covers the qualities a jazz or bossa chart actually uses", () => {
+    const expected: Record<string, string> = {
+      G7sus4: "7sus4", C13: "13", "G7b9": "7b9", "G7#9": "7#9", "G7alt": "alt",
+      "CmMaj7": "mmaj7", "C6/9": "69", Cm11: "m11", "C7#5": "7#5", "C7b5": "7b5",
+      "C5": "5", "Cm(add9)": "madd9", "C^7": "maj7", "Ch7": "m7b5",
+    };
+    for (const [symbol, quality] of Object.entries(expected)) {
+      expect(parseChord(symbol)?.quality, symbol).toBe(quality);
+    }
   });
 
   it("parses and validates slash-chord bass notes", () => {
@@ -30,6 +58,50 @@ describe("parseChord", () => {
     const result = parseProgression("Dm7 Cfoo G7");
     expect(result.chords.map((chord) => chord.raw)).toEqual(["Dm7", "G7"]);
     expect(result.invalid).toEqual(["Cfoo"]);
+  });
+
+  it("treats bar lines and repeat marks as separators, not as chords", () => {
+    const result = parseProgression("C | Am | F % G");
+    expect(result.chords.map((chord) => chord.raw)).toEqual(["C", "Am", "F", "G"]);
+    expect(result.invalid).toEqual([]);
+  });
+});
+
+describe("parseSong", () => {
+  it("reads per-chord durations and falls back to the default", () => {
+    const { steps, invalid } = parseSong("Am7:4 D7 Gmaj7:8", 2);
+    expect(steps.map((step) => [step.chord.raw, step.beats])).toEqual([
+      ["Am7", 4], ["D7", 2], ["Gmaj7", 8],
+    ]);
+    expect(invalid).toEqual([]);
+  });
+
+  it("keeps beats whole so the transport cannot drift", () => {
+    expect(parseSong("C:0", 4).steps[0].beats).toBe(1);
+    expect(parseSong("C:999", 4).steps[0].beats).toBe(64);
+  });
+});
+
+describe("note spelling", () => {
+  it("spells chord tones from their degree", () => {
+    const f7 = parseChord("F7")!;
+    expect(f7.tones.map((tone) => spellTone(f7, tone))).toEqual(["F", "A", "C", "E♭"]);
+    const cm7 = parseChord("Cm7")!;
+    expect(cm7.tones.map((tone) => spellTone(cm7, tone))).toEqual(["C", "E♭", "G", "B♭"]);
+    const fs = parseChord("F#m7")!;
+    expect(fs.tones.map((tone) => spellTone(fs, tone))).toEqual(["F♯", "A", "C♯", "E"]);
+  });
+
+  it("falls back to a plain name rather than printing a double flat", () => {
+    const chord = parseChord("Bbdim7")!;
+    // Bb Db Fb Abb is correct on paper; on a fretboard we show G.
+    expect(chord.tones.map((tone) => spellTone(chord, tone))).toEqual(["B♭", "D♭", "F♭", "G"]);
+  });
+
+  it("uses flat spelling for flat-root chords", () => {
+    const chord = parseChord("Bb7")!;
+    expect(noteName(3, chord)).toBe("E♭");
+    expect(noteName(10, chord)).toBe("B♭");
   });
 });
 
@@ -71,9 +143,20 @@ describe("voicing generation", () => {
     expect(lowest.pitchClass).toBe(6);
   });
 
-  it("uses flat spelling for flat-root chords", () => {
-    const chord = parseChord("Bb7")!;
-    expect(noteName(3, chord)).toBe("E♭");
-    expect(noteName(10, chord)).toBe("B♭");
+  it("reports unplayable chords instead of voiding the whole path", () => {
+    // Regression: one unreachable chord used to return [] for every chord.
+    const chords = parseProgression("E7 C/F# A7").chords;
+    const { path, unreachable } = optimizePath(chords, 0, 1);
+    expect(unreachable).toEqual([1]);
+    expect(path[0].length).toBeGreaterThan(0);
+    expect(path[1]).toEqual([]);
+    expect(path[2].length).toBeGreaterThan(0);
+  });
+
+  it("stays responsive on a long progression across the whole neck", () => {
+    const chords = parseProgression("C9 F9 Bb9 Eb9 Ab9 Db9 Gb9 B9").chords;
+    const started = performance.now();
+    optimizePath(chords, 0, 24);
+    expect(performance.now() - started).toBeLessThan(60);
   });
 });

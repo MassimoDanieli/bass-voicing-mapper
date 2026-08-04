@@ -4,14 +4,22 @@ An interactive 4-string bass fretboard for visualizing chord tones, finding comp
 
 ## Features
 
-- chord parsing with sharps, flats, triads, sevenths, diminished and extended chords
-- strict validation and slash-chord bass notes
-- optimized voicings inside a selectable fret range
+- chord parsing with sharps, flats, triads, sixths, sevenths, ninths, altered
+  dominants, suspensions and slash-chord bass notes
+- strict validation: unknown symbols are reported, never guessed
+- degree-aware note spelling (F7 shows E♭, not D♯)
+- optimized voicings inside a selectable fret range, chosen by dynamic
+  programming for minimum movement between chords
+- chords with no voicing in range are flagged instead of voiding the whole path
 - timed chord, arpeggio, and walking-bass practice modes
-- built-in metronome and adjustable tempo
+- built-in metronome, adjustable tempo, and A–B loop
+- optional local backing track with playback speed control
+- saved songs in browser storage
 - 20 song and practice progressions
 - English and Italian interface (English by default)
 - responsive layout for desktop and mobile
+
+Everything runs client-side; nothing is uploaded.
 
 ## Run locally
 
