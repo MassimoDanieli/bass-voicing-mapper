@@ -159,6 +159,23 @@ describe("the song name follows what you loaded", () => {
   });
 });
 
+describe("the fretboard", () => {
+  it("marks fret 0 as the nut, and only when the zone starts there", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+
+    expect(container.querySelector(".fretboard.has-open")).not.toBeNull();
+    expect(container.querySelectorAll(".fret.open")).toHaveLength(4); // one per string
+
+    const firstFret = screen.getByLabelText("First fret");
+    await user.clear(firstFret);
+    await user.type(firstFret, "3");
+
+    expect(container.querySelector(".fretboard.has-open")).toBeNull();
+    expect(container.querySelectorAll(".fret.open")).toHaveLength(0);
+  });
+});
+
 describe("backing source", () => {
   it("starts on the metronome and offers the audio file only once one is loaded", async () => {
     const user = userEvent.setup();
