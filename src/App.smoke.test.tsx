@@ -77,6 +77,15 @@ describe("control panel", () => {
     expect(screen.getByText("Choose an audio file")).toBeDefined();
   });
 
+  it("puts the transport above the progression, not below the fold", () => {
+    render(<App />);
+    const play = screen.getByRole("button", { name: "Play" });
+    const progression = screen.getByLabelText("Progression");
+
+    // DOCUMENT_POSITION_FOLLOWING: play comes first in the panel.
+    expect(play.compareDocumentPosition(progression) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("keeps the transport reachable from both tabs", async () => {
     const user = userEvent.setup();
     render(<App />);

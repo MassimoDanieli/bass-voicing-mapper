@@ -210,6 +210,10 @@ export default function App() {
     <section className="workspace">
       <aside className="controls card">
         <div className="panel-tabs" role="tablist">{([["chords",t.panelChords],["backing",t.panelBacking]] as ["chords"|"backing",string][]).map(([value,label])=><button key={value} role="tab" aria-selected={panel===value} className={panel===value?"chosen":""} onClick={()=>setPanel(value)}>{label}</button>)}</div>
+        <div className="transport-bar">
+        <div className="practice-heading"><label>{t.practice}</label><span className={playing?'live':''}>{playing?t.running:t.ready}</span></div>
+        <div className="transport"><button className="play" aria-label={playing?t.pause:t.play} onClick={togglePlay}>{playing?'Ⅱ':'▶'}</button><button aria-label={t.restart} onClick={resetPractice}>↺</button><button className={metro?'metro-on':''} aria-label={t.metro} onClick={()=>setMetro(v=>!v)}>♩</button><div className="beat-dots" aria-label={`${t.beat} ${beat+1} / ${stepBeats}`}>{Array.from({length:Math.min(16,stepBeats)},(_,i)=><i className={i===beat&&playing?'now':''} key={i}/>)}</div></div>
+        </div>
         {panel==="chords" ? <>
         <label htmlFor="progression">{t.progression}</label>
         <textarea id="progression" value={input} onChange={e=>{setInput(e.target.value);setActive(0);setBeat(0);setPlaying(false)}} rows={3}/>
@@ -232,9 +236,6 @@ export default function App() {
         <div className="loop-panel"><label><input type="checkbox" checked={loop} onChange={e=>setLoop(e.target.checked)}/> {t.loop}</label><select aria-label={t.loopFrom} value={safeLoopStart} onChange={e=>{const value=+e.target.value;setLoopStart(value);if(value>safeLoopEnd)setLoopEnd(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopFrom} {i+1}: {step.chord.raw}</option>)}</select><select aria-label={t.loopTo} value={safeLoopEnd} onChange={e=>{const value=+e.target.value;setLoopEnd(value);if(value<safeLoopStart)setLoopStart(value)}}>{steps.map((step,i)=><option value={i} key={i}>{t.loopTo} {i+1}: {step.chord.raw}</option>)}</select></div>
         <div className="save-panel"><p>{t.saveSong}</p><div><input aria-label={t.songName} placeholder={t.songName} value={songTitle} onChange={e=>setSongTitle(e.target.value)}/><button onClick={saveSong}>{t.save}</button></div>{warning&&<small className="parse-error" role="alert">{warning}</small>}{savedSongs.length>0&&<Link className="panel-link" to="/songs">{savedSongs.length} {t.saved} · {t.viewSaved}</Link>}</div>
         </>}
-        <hr/>
-        <div className="practice-heading"><label>{t.practice}</label><span className={playing?'live':''}>{playing?t.running:t.ready}</span></div>
-        <div className="transport"><button className="play" aria-label={playing?t.pause:t.play} onClick={togglePlay}>{playing?'Ⅱ':'▶'}</button><button aria-label={t.restart} onClick={resetPractice}>↺</button><button className={metro?'metro-on':''} aria-label={t.metro} onClick={()=>setMetro(v=>!v)}>♩</button><div className="beat-dots" aria-label={`${t.beat} ${beat+1} / ${stepBeats}`}>{Array.from({length:Math.min(16,stepBeats)},(_,i)=><i className={i===beat&&playing?'now':''} key={i}/>)}</div></div>
         <div className="tip"><b>{t.how}</b><span>{t.howText}</span></div>
       </aside>
       <div className="viewer card">
