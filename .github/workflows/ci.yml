@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Never let two deploys race: a slow one must not overwrite a newer one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
@@ -20,3 +25,25 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  deploy:
+    # Only from main, only after the tests pass: a red build never reaches the site.
+    needs: test-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://bass-voicing-mapper.massimodanieli.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Uses the wrangler version pinned in package-lock.json, so CI deploys with
+      # the same tool as a local `npm run deploy`.
+      - run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
