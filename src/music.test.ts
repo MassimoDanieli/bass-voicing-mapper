@@ -155,8 +155,17 @@ describe("voicing generation", () => {
 
   it("stays responsive on a long progression across the whole neck", () => {
     const chords = parseProgression("C9 F9 Bb9 Eb9 Ab9 Db9 Gb9 B9").chords;
-    const started = performance.now();
-    optimizePath(chords, 0, 24);
-    expect(performance.now() - started).toBeLessThan(60);
+    optimizePath(chords, 0, 24); // warm up, so the first run does not measure the JIT
+
+    // Best of three: a single sample is noise on a loaded CI runner, and a flaky
+    // performance test gets muted rather than fixed. This still catches the
+    // regression it guards against, which was ~300ms.
+    let best = Number.POSITIVE_INFINITY;
+    for (let run = 0; run < 3; run += 1) {
+      const started = performance.now();
+      optimizePath(chords, 0, 24);
+      best = Math.min(best, performance.now() - started);
+    }
+    expect(best).toBeLessThan(60);
   });
 });
