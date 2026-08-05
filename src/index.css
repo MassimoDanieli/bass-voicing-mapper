@@ -48,3 +48,9 @@
 .backing-controls .count-in input{accent-color:var(--terra)}
 .intro.loaded h1{color:var(--terra)}
 .intro.loaded span{font-weight:650}
+/* Fret 0 is the open string: a nut, not a fret, so it gets a narrow column of wood. */
+.fretboard.has-open .fret-numbers,.fretboard.has-open .string-row{grid-template-columns:48px 52px repeat(calc(var(--cols) - 1),minmax(82px,1fr))}
+.fret.open{border-left:0;background:linear-gradient(90deg,#c9a97e,#bb9868);box-shadow:inset -1px 0 0 #8b7350}
+.fret.open::after{content:"";position:absolute;top:0;right:-3px;bottom:0;width:6px;background:linear-gradient(90deg,#fdf6e6,#e2d3b4);box-shadow:0 0 3px #5f4c3366;z-index:4}
+.fret.open .note{width:34px;height:34px;font-size:11px;border-width:2px}
+.fret-numbers .open{color:#8b7350;font-size:15px}
