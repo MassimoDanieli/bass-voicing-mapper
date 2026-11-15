@@ -1,0 +1,22 @@
+# Monthly, grouped: one PR per ecosystem when something has moved.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      # jsdom 30.1+ changed Blob internals that vitest 4.1's URL.createObjectURL
+      # shim relies on (TypeError reading '_buffer'); revisit with vitest 5.
+      - dependency-name: jsdom
+        versions: [">=30.1.0"]
