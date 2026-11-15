@@ -12,9 +12,12 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Minor and patch updates together; each major version gets its own PR,
+    # so one breaking upgrade does not hold back the others.
     groups:
       npm:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
     ignore:
       # jsdom 30.1+ changed Blob internals that vitest 4.1's URL.createObjectURL
       # shim relies on (TypeError reading '_buffer'); revisit with vitest 5.
